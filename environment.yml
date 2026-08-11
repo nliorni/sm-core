@@ -4,9 +4,9 @@ channels:
   - bioconda
 dependencies:
   - python=3.11
-  # run.py drives the workflow through the snakemake.snakemake(...) Python
-  # API, removed in Snakemake 8+ -- pinned here so `conda env create` can't
-  # silently hand you an incompatible version. See README.md/PIPELINE.md.
-  - snakemake-minimal=7.32.4
+  - snakemake-minimal=9.16.0
+  # Only needed for -cl/--cluster (generic shell-command cluster
+  # submission, e.g. PBS qsub). See PIPELINE.md for what this plugin is.
+  - snakemake-executor-plugin-cluster-generic=1.0.9
   - colorama
   - pyyaml

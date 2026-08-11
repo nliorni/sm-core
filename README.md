@@ -45,15 +45,14 @@ and the conventions the scaffold assumes. See
 ## Requirements
 
 `conda env create -f environment.yml` installs everything: Python 3.11,
-`colorama`, `pyyaml`, and Snakemake pinned to **7.32.4**.
+`colorama`, `pyyaml`, Snakemake **9.16.0**, and
+`snakemake-executor-plugin-cluster-generic` (only used by `-cl`; see
+PIPELINE.md for what that plugin is).
 
-That pin is not optional -- `run.py` drives the workflow through the
-`snakemake.snakemake(...)` Python API, which Snakemake 8 removed in favor of
-`snakemake.api`/`snakemake.cli`. A newer Snakemake will `import snakemake`
-fine and only fail at run time, with `AttributeError: module 'snakemake' has
-no attribute 'snakemake'`. If you're installing manually instead of via
-`environment.yml` (e.g. an HPC cluster with several Snakemake environments
-already around), make sure the one `run.py` runs from is 7.x.
+`run.py` drives the workflow through Snakemake's `snakemake.api` module,
+which only exists from Snakemake 8 onward -- Snakemake 7 doesn't have it,
+and the shape of the API changed again between 8 and 9, so pin the exact
+version above rather than a loose `>=8`.
 
 A PBS/OpenPBS cluster if you use `-cl` (for other schedulers, see
 `build_cluster_cmd` in `run.py`).

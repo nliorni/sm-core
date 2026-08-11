@@ -33,12 +33,25 @@ import argparse
 import fcntl
 import hashlib
 import os
+import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
-import snakemake
 from colorama import Fore, Style, init
+from snakemake.api import (
+    ConfigSettings,
+    DAGSettings,
+    DeploymentMethod,
+    DeploymentSettings,
+    ExecutionSettings,
+    OutputSettings,
+    ResourceSettings,
+    SnakemakeApi,
+    WorkflowSettings,
+)
+from snakemake.resources import DefaultResources
+from snakemake.settings.enums import RerunTrigger
 
 
 try:
@@ -207,7 +220,12 @@ def build_cluster_cmd(queue: str, logdir: Path) -> str:
     # must survive this .format() call untouched; only {queue}/{logdir} are
     # substituted here. Written for OpenPBS/PBS Pro syntax (`qsub -l
     # select=1:ncpus=X:mem=Ygb`) -- if your cluster runs SLURM/LSF/etc.
-    # instead, this is the one function to rewrite.
+    # instead, this is the one function to rewrite. This exact submit-command
+    # template is handed to the snakemake-executor-plugin-cluster-generic
+    # plugin below (see build_cluster_executor_settings) -- Snakemake 8+
+    # moved generic shell-command cluster submission out of core into that
+    # plugin, but the template format and placeholder substitution are
+    # unchanged from Snakemake 7's built-in --cluster.
     template = (
         "qsub -q {queue} "
         "-l select=1:ncpus={{threads}}:mem={{resources.mem_mb}}mb "
@@ -303,10 +321,85 @@ def validate_args(args: argparse.Namespace, snakefile: Path, configfile: Path) -
             )
 
 
+RERUN_TRIGGER_BY_NAME = {
+    "mtime": RerunTrigger.MTIME,
+    "params": RerunTrigger.PARAMS,
+    "input": RerunTrigger.INPUT,
+    "software-env": RerunTrigger.SOFTWARE_ENV,
+    "code": RerunTrigger.CODE,
+}
+
+
+def rerun_triggers_from_names(names: Optional[List[str]]) -> Optional[Set[RerunTrigger]]:
+    if not names:
+        return None
+    return {RERUN_TRIGGER_BY_NAME[name] for name in names}
+
+
+def build_deployment_method(args: argparse.Namespace) -> Set[DeploymentMethod]:
+    methods: Set[DeploymentMethod] = set()
+    if not args.no_conda:
+        methods.add(DeploymentMethod.CONDA)
+    if not args.no_singularity:
+        methods.add(DeploymentMethod.APPTAINER)
+    return methods
+
+
+def build_cluster_executor_settings(args: argparse.Namespace):
+    # Snakemake 8+ pulled generic shell-command cluster submission out of
+    # core into its own plugin -- this is the direct successor to the old
+    # `cluster=` kwarg, not a new/different mechanism: same submit-command
+    # template (build_cluster_cmd), same placeholder substitution, same
+    # "watch for output files" completion detection (no status_cmd is set
+    # below, matching Snakemake 7's behavior here).
+    try:
+        from snakemake_executor_plugin_cluster_generic import (
+            ExecutorSettings as ClusterGenericExecutorSettings,
+        )
+    except ImportError:
+        die(
+            "The 'snakemake-executor-plugin-cluster-generic' package is required "
+            "for -cl/--cluster (see environment.yml). Install it, or drop -cl to "
+            "run locally instead."
+        )
+
+    cluster_logdir = THIS_DIR / "logs" / "pbs"
+    cluster_logdir.mkdir(parents=True, exist_ok=True)
+    return ClusterGenericExecutorSettings(
+        submit_cmd=build_cluster_cmd(args.queue, cluster_logdir)
+    )
+
+
+def run_dag_export(snakefile: Path, configfile: Path, args: argparse.Namespace) -> int:
+    # dag_api.printdag() -- the direct Python-API equivalent of --dag --
+    # hits a reproducible upstream bug in Snakemake 9.16.0: dag.py's
+    # Dag.__str__ compares the PrintDag enum against str(PrintDag.DOT),
+    # which is never equal, so it silently returns None instead of the DOT
+    # graph and print() blows up. Shelling out to the snakemake CLI itself
+    # sidesteps it (the CLI's own --dag hits the same underlying code but
+    # through a working path) and produces byte-identical output to what
+    # --dag gave under Snakemake 7.
+    cmd = [
+        sys.executable,
+        "-m",
+        "snakemake",
+        "--snakefile",
+        str(snakefile),
+        "--configfile",
+        str(configfile),
+        "--cores",
+        str(args.cores),
+        "--dag",
+        "dot",
+        *(args.workflow or []),
+    ]
+    return subprocess.run(cmd).returncode
+
+
 def run_snakemake(args: argparse.Namespace) -> int:
     snakefile = Path(args.snakefile).resolve() if args.snakefile else THIS_DIR / "Snakefile"
     configfile = Path(args.configfile).resolve()
-    workdir = str(Path(args.directory).resolve()) if args.directory else None
+    workdir = Path(args.directory).resolve() if args.directory else Path.cwd()
 
     validate_args(args, snakefile, configfile)
 
@@ -324,31 +417,6 @@ def run_snakemake(args: argparse.Namespace) -> int:
     # one.
     _project_lock = acquire_project_lock(configfile)
 
-    cluster_cmd = None
-    default_resources = None
-    nodes = None
-    cores = args.cores
-    if args.cluster:
-        cluster_logdir = THIS_DIR / "logs" / "pbs"
-        cluster_logdir.mkdir(parents=True, exist_ok=True)
-        cluster_cmd = build_cluster_cmd(args.queue, cluster_logdir)
-        from snakemake.resources import DefaultResources
-
-        default_resources = DefaultResources(
-            [
-                f"mem_mb={CLUSTER_DEFAULT_MEM_MB}",
-                f"runtime={CLUSTER_DEFAULT_RUNTIME_MIN}",
-            ]
-        )
-        nodes = args.jobs
-        # Snakemake caps every rule's `threads:` to min(rule.threads, cores)
-        # before rendering `{threads}` into the --cluster submit template --
-        # regardless of execution mode. A too-low cores= here silently caps
-        # every job's requested ncpus even though -q's value is irrelevant
-        # once --cluster is set, so use a sentinel well above any rule's
-        # declared threads instead.
-        cores = 999
-
     print_run_summary(
         args=args,
         snakefile=snakefile,
@@ -358,54 +426,89 @@ def run_snakemake(args: argparse.Namespace) -> int:
         resources=resources,
     )
 
-    snakemake_kwargs: Dict[str, Any] = {
-        "snakefile": str(snakefile),
-        "configfiles": [str(configfile)],
-        "targets": args.workflow or [],
-        "workdir": workdir,
-        "cores": cores,
-        "dryrun": args.dry_run,
-        "use_conda": not args.no_conda,
-        "use_singularity": not args.no_singularity,
-        "singularity_args": singularity_args,
-        "forceall": args.forceall,
-        "force_incomplete": args.rerun_incomplete,
-        "unlock": args.unlock,
-        "lock": False,
-        "printdag": args.dag,
-        "lint": args.lint,
-        "printshellcmds": args.printshellcmds,
-        "keepgoing": args.keep_going,
-        "latency_wait": args.latency_wait,
-        "restart_times": args.restart_times,
-    }
+    if args.dag:
+        return run_dag_export(snakefile, configfile, args)
 
-    if cluster_cmd:
-        snakemake_kwargs["cluster"] = cluster_cmd
-    if nodes:
-        snakemake_kwargs["nodes"] = nodes
-    if default_resources:
-        snakemake_kwargs["default_resources"] = default_resources
+    resource_settings = ResourceSettings(
+        # Snakemake caps every rule's `threads:` to min(rule.threads,
+        # cores) before rendering `{threads}` into the --cluster submit
+        # template -- regardless of execution mode. A too-low cores= here
+        # silently caps every job's requested ncpus even though -q's value
+        # is irrelevant once --cluster is set, so use a sentinel well above
+        # any rule's declared threads instead.
+        cores=999 if args.cluster else args.cores,
+        nodes=args.jobs if args.cluster else None,
+        resources=resources or {},
+        default_resources=(
+            DefaultResources(
+                [
+                    f"mem_mb={CLUSTER_DEFAULT_MEM_MB}",
+                    f"runtime={CLUSTER_DEFAULT_RUNTIME_MIN}",
+                ]
+            )
+            if args.cluster
+            else None
+        ),
+    )
+    config_settings = ConfigSettings(configfiles=[configfile])
+    deployment_settings = DeploymentSettings(
+        deployment_method=build_deployment_method(args),
+        apptainer_args=singularity_args,
+        conda_prefix=Path(args.conda_prefix) if args.conda_prefix else None,
+    )
+    workflow_settings = WorkflowSettings(wrapper_prefix=args.wrapper_prefix)
+    output_settings = OutputSettings(printshellcmds=args.printshellcmds)
+    execution_settings = ExecutionSettings(
+        latency_wait=args.latency_wait,
+        keep_going=args.keep_going,
+        lock=False,  # see acquire_project_lock()
+        retries=args.restart_times,
+    )
+    rerun_triggers = rerun_triggers_from_names(args.rerun_triggers)
+    dag_settings = DAGSettings(
+        targets=set(args.workflow or []),
+        forceall=args.forceall,
+        force_incomplete=args.rerun_incomplete,
+        **({"rerun_triggers": rerun_triggers} if rerun_triggers else {}),
+    )
 
-    if resources:
-        snakemake_kwargs["resources"] = resources
+    try:
+        with SnakemakeApi(output_settings) as snakemake_api:
+            workflow_api = snakemake_api.workflow(
+                resource_settings=resource_settings,
+                config_settings=config_settings,
+                deployment_settings=deployment_settings,
+                workflow_settings=workflow_settings,
+                snakefile=snakefile,
+                workdir=workdir,
+            )
 
-    if args.rerun_triggers:
-        snakemake_kwargs["rerun_triggers"] = args.rerun_triggers
+            if args.lint is not None:
+                workflow_api.lint(json=args.lint == "json")
+                return 0
 
-    if args.wrapper_prefix:
-        snakemake_kwargs["wrapper_prefix"] = args.wrapper_prefix
+            dag_api = workflow_api.dag(dag_settings=dag_settings)
 
-    if args.conda_prefix:
-        snakemake_kwargs["conda_prefix"] = args.conda_prefix
+            if args.unlock:
+                dag_api.unlock()
+                success("Working directory unlocked.")
+                return 0
 
-    status = snakemake.snakemake(**snakemake_kwargs)
+            executor_settings = (
+                build_cluster_executor_settings(args) if args.cluster else None
+            )
+            dag_api.execute_workflow(
+                executor="dryrun" if args.dry_run else ("cluster-generic" if args.cluster else "local"),
+                execution_settings=execution_settings,
+                executor_settings=executor_settings,
+            )
+    except SystemExit:
+        raise
+    except Exception as exc:
+        die(f"Workflow failed: {exc}")
 
-    if status:
-        success("Workflow finished successfully.")
-        return 0
-
-    die("Workflow failed.", exit_code=1)
+    success("Workflow finished successfully.")
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
