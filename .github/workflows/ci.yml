@@ -7,17 +7,17 @@ on:
 jobs:
   tutorial-smoke-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -el {0}
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        # run.py uses the snakemake.snakemake(...) Python API, removed in
-        # Snakemake 8+ -- see README.md's Requirements section.
-        run: pip install "snakemake<8" colorama pyyaml
+          environment-file: environment.yml
+          activate-environment: sm-core
 
       - name: Dry-run the tutorial
         run: ./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 -n --no-conda

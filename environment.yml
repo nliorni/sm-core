@@ -1,0 +1,12 @@
+name: sm-core
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  # run.py drives the workflow through the snakemake.snakemake(...) Python
+  # API, removed in Snakemake 8+ -- pinned here so `conda env create` can't
+  # silently hand you an incompatible version. See README.md/PIPELINE.md.
+  - snakemake-minimal=7.32.4
+  - colorama
+  - pyyaml

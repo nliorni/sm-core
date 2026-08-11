@@ -38,10 +38,11 @@ A single argparse CLI wrapping `snakemake.snakemake(...)` directly (not the
 > `run.py` calls (`configfiles=`, `forceall=`, `dryrun=`, etc.) was removed
 > in Snakemake 8 in favor of `snakemake.api`/`snakemake.cli`. A newer
 > Snakemake will `import snakemake` fine and fail at the call site with
-> `AttributeError: module 'snakemake' has no attribute 'snakemake'`. Install
-> with `pip install "snakemake<8"`, or if you're on a cluster with several
-> Snakemake conda envs already around, make sure `run.py` is launched from a
-> 7.x one specifically.
+> `AttributeError: module 'snakemake' has no attribute 'snakemake'`.
+> `environment.yml` pins the right version (`conda env create -f
+> environment.yml`) -- if you're installing manually instead, or on a
+> cluster with several Snakemake conda envs already around, make sure
+> `run.py` is launched from a 7.x one specifically.
 
 - **Local or PBS execution** from the same invocation: `-q N` runs locally
   with N cores; adding `-cl -qu <queue> -j <max-concurrent>` instead submits

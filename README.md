@@ -1,21 +1,17 @@
 # sm-core
 
-A clone-and-customize scaffold for Snakemake pipelines: a battle-tested PBS
-launcher CLI (`run.py`) plus the directory conventions (`workflow/{rules,
-scripts,envs}`, `config_template.yaml`, `tests/tutorial/`, `PIPELINE.md`)
-that grew out of copy-pasting the same launcher across several independent
-genomics pipelines. This repo pulls that shared 85-90% back into one place so
-the next pipeline starts from it instead of another copy-paste.
-
-It ships with a tiny synthetic demo (`tests/tutorial/`) so the template runs
-end-to-end right after cloning, with zero bioinformatics dependencies.
+A clone-and-customize scaffold for Snakemake pipelines: a PBS launcher CLI
+(`run.py`) plus directory conventions for `workflow/{rules,scripts,envs}`,
+a `config_template.yaml`, and a `tests/tutorial/` demo.
 
 ## Quickstart
 
 ```bash
 git clone https://github.com/nliorni/sm-core.git my-new-pipeline
 cd my-new-pipeline
-pip install "snakemake<8" colorama pyyaml   # run.py needs Snakemake 7.x -- see Requirements below
+
+conda env create -f environment.yml
+conda activate sm-core
 
 # Prove it works out of the box:
 ./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 -n   # dry-run
@@ -44,16 +40,20 @@ and the conventions the scaffold assumes. See
 - **`config_template.yaml`** -- annotated config to copy per project.
 - **`tests/tutorial/`** -- the runnable demo mentioned above.
 - **`bootstrap.py`** -- fills in the pipeline name after cloning.
+- **`environment.yml`** -- conda env with the exact Snakemake version `run.py` needs.
 
 ## Requirements
 
-Python 3.9+, `colorama`, `pyyaml`, and **Snakemake 7.x specifically**
-(`pip install "snakemake<8"`). `run.py` drives the workflow through the
+`conda env create -f environment.yml` installs everything: Python 3.11,
+`colorama`, `pyyaml`, and Snakemake pinned to **7.32.4**.
+
+That pin is not optional -- `run.py` drives the workflow through the
 `snakemake.snakemake(...)` Python API, which Snakemake 8 removed in favor of
-`snakemake.api`/`snakemake.cli` -- installing a newer Snakemake will import
-fine but fail at run time with `AttributeError: module 'snakemake' has no
-attribute 'snakemake'`. If you're on an HPC cluster with several Snakemake
-conda envs around, make sure the one `run.py` runs from is a 7.x one.
+`snakemake.api`/`snakemake.cli`. A newer Snakemake will `import snakemake`
+fine and only fail at run time, with `AttributeError: module 'snakemake' has
+no attribute 'snakemake'`. If you're installing manually instead of via
+`environment.yml` (e.g. an HPC cluster with several Snakemake environments
+already around), make sure the one `run.py` runs from is 7.x.
 
 A PBS/OpenPBS cluster if you use `-cl` (for other schedulers, see
 `build_cluster_cmd` in `run.py`).
