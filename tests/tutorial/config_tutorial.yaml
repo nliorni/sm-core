@@ -1,0 +1,12 @@
+# Runnable smoke-test config for the toy demo pipeline (see README.md in
+# this directory). Not a template to copy for a real project -- that's
+# config_template.yaml at the repo root.
+
+output_dir: "tests/tutorial/output/"
+
+unit: ["R1", "R2"]
+file_ext: ".txt"
+
+samples:
+  SAMPLE_A: "tests/tutorial/data/sample_A"
+  SAMPLE_B: "tests/tutorial/data/sample_B"

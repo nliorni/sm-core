@@ -1,0 +1,57 @@
+# ============================================================================
+# {{PIPELINE_NAME}} config - MASTER TEMPLATE
+# ============================================================================
+#
+# Copy this file, rename it per project, and edit only the blocks marked
+#   >>> EDIT PER PROJECT <<<
+# Everything else is a shared default that usually doesn't need to change.
+#
+#   cp config_template.yaml config_my_project.yaml
+#
+# Dry-run before launching for real:
+#   ./run.py -w example -c config_my_project.yaml -q 4 -n
+#
+# High-level workflow targets: see `./run.py --list-workflows`, or the
+# WORKFLOWS dict at the top of run.py (>>> EDIT PER PROJECT <<< once you
+# replace the toy `example` target with your own).
+#
+# ============================================================================
+
+
+# ############################################################################
+# SECTION 1 - PROJECT & SAMPLES                       >>> EDIT PER PROJECT <<<
+# ############################################################################
+
+# Main output directory. Created (with a results/-style subfolder as your
+# rules need) on first run.
+output_dir: "results/my_project/"
+
+# Paired-input naming convention. For each sample prefix below, the pipeline
+# expects:
+#   {sample_prefix}_{unit[0]}{file_ext}
+#   {sample_prefix}_{unit[1]}{file_ext}
+# The toy demo shipped with this template (workflow/rules/example.smk) reads
+# plain text "reads" this way -- swap unit/file_ext for whatever pairing
+# convention your real inputs use once you replace it, e.g.:
+#   unit: ["R1_001", "R2_001"]
+#   file_ext: ".fastq.gz"
+unit: ["R1", "R2"]
+file_ext: ".txt"
+
+# Sample table.
+#   Key   = sample ID used in output filenames.
+#   Value = input file prefix (path + basename, WITHOUT the
+#           _{unit}{file_ext} part).
+samples:
+  SAMPLE_A: "tests/tutorial/data/sample_A"
+  SAMPLE_B: "tests/tutorial/data/sample_B"
+  # SAMPLE_C: "path/to/SAMPLE_C/SAMPLE_C"
+
+
+# ############################################################################
+# SECTION 2 - RESOURCES & MISC
+# ############################################################################
+# Nothing else is required to run the toy `example` target. Add your own
+# per-tool config sections here (mirroring this SECTION / >>> EDIT PER
+# PROJECT <<< convention) as you replace workflow/rules/example.smk with
+# real rules -- see PIPELINE.md for the conventions this template follows.

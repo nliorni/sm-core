@@ -1,0 +1,16 @@
+# Snakemake / run.py runtime state
+.snakemake/
+.smk_locks/
+logs/
+
+# Demo output (regenerate with tests/tutorial's commands)
+tests/tutorial/output/*
+!tests/tutorial/output/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / OS cruft
+.DS_Store
+*.swp
