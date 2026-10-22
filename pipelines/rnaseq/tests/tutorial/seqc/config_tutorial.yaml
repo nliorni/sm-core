@@ -1,0 +1,39 @@
+# ============================================================================
+# sm-core/rnaseq: HUMAN tutorial config -- SEQC/MAQC-III (tests/tutorial/seqc)
+# ============================================================================
+# Runnable as is after ./download_tutorial_data.sh. Paths are relative to the
+# pipeline directory (pipelines/rnaseq/), which run.py uses as the working
+# directory wherever it is launched from; FASTQ paths in the samplesheet are
+# relative to the samplesheet itself.
+#
+# Six libraries (A_1..A_3 = UHRR + ERCC Mix 1, B_1..B_3 = HBRR + ERCC Mix 2),
+# two flowcells each, merged. GENCODE 50 on GRCh38, plus the 92 ERCC
+# spike-ins -- the truth set README.md validates both count matrices against.
+# ============================================================================
+
+output_dir: "tests/tutorial/seqc/output/"
+samplesheet: "tests/tutorial/seqc/samplesheet.csv"
+
+# Left to the data on purpose: the README shows what each branch inferred.
+strandedness: auto
+
+reference:
+  genome: "tests/tutorial/seqc/reference/GRCh38.primary_assembly.genome.fa.gz"
+  gtf: "tests/tutorial/seqc/reference/gencode.v50.primary_assembly.annotation.gtf.gz"
+  spikein_fasta: "tests/tutorial/seqc/reference/ERCC92.fa"
+  # 2x100 bp reads: read length - 1.
+  star_sjdb_overhang: 99
+  threads: 16
+  star_index_mem_mb: 48000
+  salmon_index_mem_mb: 32000
+
+trimming:
+  threads: 8
+
+star:
+  threads: 16
+  mem_mb: 40000
+
+salmon:
+  threads: 16
+  mem_mb: 32000

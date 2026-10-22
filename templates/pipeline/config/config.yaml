@@ -1,0 +1,45 @@
+# ============================================================================
+# sm-core/{{PIPELINE_NAME}} config - MASTER TEMPLATE
+# ============================================================================
+#
+# Copy this file, rename it per project, and edit only the blocks marked
+#   >>> EDIT PER PROJECT <<<
+# Everything else is a shared default that usually doesn't need to change.
+#
+#   cp config/config.yaml config_my_project.yaml
+#   ./run.py -w example -c config_my_project.yaml -q 4 -n
+#
+# ============================================================================
+
+
+# ############################################################################
+# SECTION 1 - PROJECT & SAMPLES                       >>> EDIT PER PROJECT <<<
+# ############################################################################
+
+output_dir: "/path/to/output/MY_PROJECT/"
+
+# OPTIONAL - completion e-mail (success or failure) via the system `mail`.
+# notify_email: "you@institution.edu"
+
+# Samples, resolved by smcore/common.smk's load_samples(). Either:
+#
+# (a) FASTQ prefixes -- {prefix}_{unit[0]}.{extension} / {prefix}_{unit[1]}.{extension};
+#     a list of prefixes merges lanes/runs:
+unit: ["R1", "R2"]
+extension: "fastq.gz"
+samples:
+  SAMPLE_A: "/path/to/fastq/SAMPLE_A"
+  SAMPLE_B: ["/path/to/fastq/SAMPLE_B_L001", "/path/to/fastq/SAMPLE_B_L002"]
+
+# (b) or an nf-core-style samplesheet (sample,fastq_1,fastq_2[,strandedness,...]):
+# samplesheet: "/path/to/samplesheet.csv"
+
+
+# ############################################################################
+# SECTION 2 - SOFTWARE ENVIRONMENTS
+# ############################################################################
+# Every rule builds its own conda environment from workflow/envs/<name>.yaml.
+# Sites with shared pre-built environments can substitute them by name:
+#
+# conda_envs:
+#   example: "/shared/condaEnvs/python311"

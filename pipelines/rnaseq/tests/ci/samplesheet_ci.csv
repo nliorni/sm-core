@@ -1,0 +1,5 @@
+sample,fastq_1,fastq_2,strandedness,condition
+S1,fastq/S1_L1_R1.fastq.gz,fastq/S1_L1_R2.fastq.gz,auto,ctrl
+S1,fastq/S1_L2_R1.fastq.gz,fastq/S1_L2_R2.fastq.gz,auto,ctrl
+S2,fastq/S2_R1.fastq.gz,fastq/S2_R2.fastq.gz,reverse,treat
+S3,fastq/S3_R1.fastq.gz,fastq/S3_R2.fastq.gz,auto,treat

@@ -1,36 +1,130 @@
-name: CI
+# sm-core suite CI.
+#
+#   framework         the template pipeline runs end to end through the shared
+#                     launcher (smcore/), and bootstrap.py makes a working copy
+#   rnaseq-checks     syntax of everything that ships; every target dry-run on
+#                     placeholder inputs; the two branches stay independent
+#   rnaseq-tutorial   the yeast tutorial for real: every tool, every conda
+#                     environment, both count matrices -- ~15 minutes
+#
+# A new pipeline adds its own <name>-checks job (copy rnaseq-checks).
+name: ci
 
 on:
   push:
+    branches: [main]
   pull_request:
 
-jobs:
-  tutorial-smoke-test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash -el {0}
+defaults:
+  run:
+    shell: bash -el {0}   # login shell, so the conda environment is active
 
+jobs:
+  framework:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: conda-incubator/setup-miniconda@v3
         with:
           environment-file: environment.yml
           activate-environment: sm-core
+          miniforge-version: latest
+          channel-priority: strict
 
-      - name: Dry-run the tutorial
-        run: ./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 -n --no-conda
+      - name: Python syntax
+        run: python -m py_compile run.py bootstrap.py smcore/*.py templates/pipeline/run.py
 
-      - name: Run the tutorial
-        run: ./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 --no-conda
+      - name: Suite dispatcher
+        run: ./run.py --list | grep -q rnaseq
 
-      - name: Check output
+      - name: Template pipeline runs end to end
+        working-directory: templates/pipeline
         run: |
-          test -f tests/tutorial/output/summary.tsv
-          diff <(sort tests/tutorial/output/summary.tsv) <(sort <<'EOF'
-          sample	r1_lines	r2_lines
-          SAMPLE_A	4	4
-          SAMPLE_B	2	2
-          EOF
-          )
+          ./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 --no-conda --no-singularity
+          diff <(sort tests/tutorial/output/summary.tsv) <(printf 'SAMPLE_A\t4\t4\nSAMPLE_B\t2\t2\nsample\tr1_lines\tr2_lines\n')
+
+      - name: bootstrap.py makes a pipeline that runs
+        run: |
+          ./bootstrap.py ci_demo "CI demo"
+          cd pipelines/ci_demo
+          ./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 --no-conda --no-singularity
+          test -s tests/tutorial/output/summary.tsv
+
+  rnaseq-checks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipelines/rnaseq
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: sm-core
+          miniforge-version: latest
+          channel-priority: strict
+      - uses: r-lib/actions/setup-r@v2
+
+      - name: Python, R, shell and YAML syntax
+        run: |
+          python -m py_compile run.py workflow/scripts/*.py
+          for f in workflow/scripts/*.R; do Rscript -e "invisible(parse('$f'))"; done
+          bash -n tests/ci/make_ci_inputs.sh tests/tutorial/*/*.sh resources/*.sh
+          python -c "import glob, yaml; [yaml.safe_load(open(f)) for f in glob.glob('config/*.yaml') + glob.glob('workflow/**/*.yaml', recursive=True) + glob.glob('tests/**/*.yaml', recursive=True)]"
+
+      - name: Workflow targets
+        run: ./run.py --list-workflows
+
+      - name: Dry-run every target
+        # Resolves the complete DAG and checks every input the pipeline cannot
+        # build itself exists -- never opens them, so empty placeholders do.
+        run: |
+          ./tests/ci/make_ci_inputs.sh
+          for target in all star salmon reference trim; do
+            echo "::group::dry-run $target"
+            ./run.py -w "$target" -c tests/ci/config_ci.yaml -q 1 -n --no-singularity
+            echo "::endgroup::"
+          done
+          for variant in notrim prefixes; do
+            echo "::group::dry-run all ($variant)"
+            ./run.py -w all -c tests/ci/generated/config_ci_$variant.yaml -q 1 -n --no-singularity
+            echo "::endgroup::"
+          done
+
+      - name: The two branches stay independent
+        run: |
+          ./run.py -w salmon -c tests/ci/config_ci.yaml -q 1 -n --no-singularity > /tmp/salmon.log
+          ./run.py -w star -c tests/ci/config_ci.yaml -q 1 -n --no-singularity > /tmp/star.log
+          grep -qE '^rule (star_|rnaseqc|collapse_annotation)' /tmp/salmon.log && { echo "-w salmon must not run STAR" >&2; exit 1; }
+          grep -qE '^rule (salmon_|tximport|transcriptome)' /tmp/star.log && { echo "-w star must not run Salmon" >&2; exit 1; }
+          grep -q '^rule merge_lanes' /tmp/star.log || { echo "S1 has two lanes and should be merged" >&2; exit 1; }
+          echo "independent"
+
+      - name: Configuration errors are caught at start-up
+        run: |
+          ./run.py -w trim -c tests/ci/generated/config_ci_notrim.yaml -q 1 -n > /tmp/trim.log 2>&1 || true
+          grep -q "needs trimming.enabled: true" /tmp/trim.log || { cat /tmp/trim.log; exit 1; }
+
+  rnaseq-tutorial:
+    runs-on: ubuntu-latest
+    needs: rnaseq-checks
+    defaults:
+      run:
+        working-directory: pipelines/rnaseq
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: environment.yml
+          activate-environment: sm-core
+          miniforge-version: latest
+          channel-priority: strict
+
+      - name: Download the yeast tutorial data
+        run: tests/tutorial/yeast/download_tutorial_data.sh
+
+      - name: Run both branches
+        run: ./run.py -w all -c tests/tutorial/yeast/config_tutorial.yaml -q 4 --no-singularity
+
+      - name: Check the deliverables
+        run: tests/tutorial/yeast/check_outputs.sh

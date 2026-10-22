@@ -1,62 +1,76 @@
 # sm-core
 
-A clone-and-customize scaffold for Snakemake pipelines: a PBS launcher CLI
-(`run.py`) plus directory conventions for `workflow/{rules,scripts,envs}`,
-a `config_template.yaml`, and a `tests/tutorial/` demo.
+A suite of Snakemake pipelines for computational multi-omics. It aims to do for Snakemake
+what nf-core does for Nextflow: each pipeline is state-of-the-art, documented key by key,
+validated on public data against a published truth set, and runs the same way as every
+other pipeline in the suite.
 
-## Quickstart
+## Pipelines
+
+| Pipeline | What it does | Status |
+|---|---|---|
+| [rnaseq](pipelines/rnaseq/README.md) | Paired-end RNA-seq: FASTQ → STAR and Salmon count matrices | 0.1.0 |
+
+## Quick start
 
 ```bash
-git clone https://github.com/nliorni/sm-core.git my-new-pipeline
-cd my-new-pipeline
-
-conda env create -f environment.yml
+git clone https://github.com/nliorni/sm-core.git && cd sm-core
+conda env create -f environment.yml          # Snakemake 9.16.0 + launcher; once
 conda activate sm-core
 
-# Prove it works out of the box:
-./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 -n   # dry-run
-./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2      # for real
-cat tests/tutorial/output/summary.tsv
-
-# Then make it yours:
-./bootstrap.py MyNewPipeline
-rm -rf .git && git init
+./run.py --list                              # the pipelines
+./run.py rnaseq --list-workflows             # one pipeline's targets
+./run.py rnaseq -w all -c my_config.yaml -q 32 -n     # dry-run
+./run.py rnaseq -w all -c my_config.yaml -cl -qu workq -j 20   # one cluster job per rule (PBS; --scheduler slurm for SLURM)
 ```
 
-See [PIPELINE.md](PIPELINE.md) for what `run.py` actually does (PBS
-submission, per-config locking, retry-scaled resources, dry-run/DAG export)
-and the conventions the scaffold assumes. See
-[tests/tutorial/README.md](tests/tutorial/README.md) for the demo itself.
+`./run.py rnaseq …` and `pipelines/rnaseq/run.py …` are the same command.
 
-## What's in here
+## What every pipeline shares
 
-- **`run.py`** -- launcher CLI. `-q N` runs locally with N cores; `-cl -qu
-  <queue> -j <jobs>` submits each rule as its own PBS job instead. Dry-run,
-  DAG export, per-config file-locking, conda/Singularity toggles, retry with
-  scaled resources. `./run.py --help` / `--list-workflows` for the rest.
-- **`Snakefile`** + **`workflow/`** -- a minimal skeleton (`scaled()` retry
-  helper, paired-input resolution convention, one demo rule chain) to delete
-  and replace with real rules.
-- **`config_template.yaml`** -- annotated config to copy per project.
-- **`tests/tutorial/`** -- the runnable demo mentioned above.
-- **`bootstrap.py`** -- fills in the pipeline name after cloning.
-- **`environment.yml`** -- conda env with the exact Snakemake version `run.py` needs.
+- **One launcher** (`smcore/launcher.py`): local runs (`-q N`) or one cluster job per rule
+  (`-cl`), dry-runs, DAG export, automatic retries with more memory (`-rt`), and per-project
+  locking, so several projects can run from one checkout. Documented once, in
+  [docs/usage.md](docs/usage.md).
+- **One set of Snakemake helpers** (`smcore/common.smk`): paired-end inputs from an
+  nf-core-style samplesheet or from FASTQ prefixes, with lanes merged; per-tool conda
+  environments that a site can substitute; retry-scaled resources; completion e-mails.
+- **One shape**: `run.py`, `Snakefile`, `config/config.yaml` with a validating schema,
+  `workflow/{rules,envs,scripts,schemas}`, `tests/{ci,tutorial}`, `docs/`, `examples/`.
+  See [docs/conventions.md](docs/conventions.md).
+
+## Repository layout
+
+```
+run.py              suite dispatcher
+bootstrap.py        start a new pipeline from templates/pipeline/
+environment.yml     the launcher environment, shared by all pipelines
+smcore/             shared launcher and Snakemake helpers
+pipelines/<name>/   one self-contained pipeline per directory
+templates/pipeline/ the skeleton bootstrap.py copies; runs as a toy demo
+docs/               suite-level docs: conventions, launcher usage
+```
+
+## Adding a pipeline
+
+```bash
+./bootstrap.py chipseq "ChIP-seq: FASTQ to peaks"
+```
+
+This creates `pipelines/chipseq/`, which already runs through the shared launcher. The
+checklist for turning it into a real pipeline is in [docs/conventions.md](docs/conventions.md#adding-a-pipeline).
 
 ## Requirements
 
-`conda env create -f environment.yml` installs everything: Python 3.11,
-`colorama`, `pyyaml`, Snakemake **9.16.0**, and
-`snakemake-executor-plugin-cluster-generic` (only used by `-cl`; see
-PIPELINE.md for what that plugin is).
+Linux, conda, and PBS or SLURM for `-cl` (see
+[docs/usage.md](docs/usage.md#cluster-runs-pbs-or-slurm)). Each pipeline's own `docs/installation.md`
+lists its memory and disk needs.
 
-`run.py` drives the workflow through Snakemake's `snakemake.api` module,
-which only exists from Snakemake 8 onward -- Snakemake 7 doesn't have it,
-and the shape of the API changed again between 8 and 9, so pin the exact
-version above rather than a loose `>=8`.
+## Citation
 
-A PBS/OpenPBS cluster if you use `-cl` (for other schedulers, see
-`build_cluster_cmd` in `run.py`).
+Cite the suite through [CITATION.cff](CITATION.cff), together with the tools listed in the
+pipeline's `docs/methods.md`.
 
 ## License
 
-MIT -- see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).

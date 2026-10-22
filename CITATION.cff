@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use sm-core, please cite it as below, together with the tools listed in the pipeline's docs/methods.md."
+title: "sm-core: a suite of Snakemake pipelines for computational multi-omics"
+type: software
+authors:
+  - family-names: "Liorni"
+    given-names: "N."
+license: MIT
+repository-code: "https://github.com/nliorni/sm-core"
+version: "0.2.0"
+keywords:
+  - snakemake
+  - bioinformatics
+  - rna-seq
+  - multi-omics
