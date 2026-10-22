@@ -1,0 +1,3 @@
+# GitHub's language bar counts bytes. The committed MultiQC reports and other
+# example outputs are documentation, not source, so leave them out of it.
+pipelines/*/examples/** linguist-documentation
