@@ -5,6 +5,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/nliorni/sm-core/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/nliorni/sm-core/actions/workflows/ci.yml/badge.svg?branch=main"></a>
   <img alt="Snakemake" src="https://img.shields.io/badge/snakemake-9.16.0-3C4B9A">
   <img alt="STAR" src="https://img.shields.io/badge/STAR-2.7.11b-E4572E">
   <img alt="Salmon" src="https://img.shields.io/badge/Salmon-1.10.3-E4572E">
