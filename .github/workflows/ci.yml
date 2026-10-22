@@ -100,8 +100,12 @@ jobs:
 
       - name: The two branches stay independent
         run: |
-          ./run.py -w salmon -c tests/ci/config_ci.yaml -q 1 -n --no-singularity > /tmp/salmon.log
-          ./run.py -w star -c tests/ci/config_ci.yaml -q 1 -n --no-singularity > /tmp/star.log
+          # Snakemake logs to stderr. Check each plan is there before checking
+          # what it leaves out, so an empty log cannot pass.
+          ./run.py -w salmon -c tests/ci/config_ci.yaml -q 1 -n --no-singularity > /tmp/salmon.log 2>&1
+          ./run.py -w star -c tests/ci/config_ci.yaml -q 1 -n --no-singularity > /tmp/star.log 2>&1
+          grep -q '^rule salmon_quant' /tmp/salmon.log || { cat /tmp/salmon.log; exit 1; }
+          grep -q '^rule star_align' /tmp/star.log || { cat /tmp/star.log; exit 1; }
           grep -qE '^rule (star_|rnaseqc|collapse_annotation)' /tmp/salmon.log && { echo "-w salmon must not run STAR" >&2; exit 1; }
           grep -qE '^rule (salmon_|tximport|transcriptome)' /tmp/star.log && { echo "-w star must not run Salmon" >&2; exit 1; }
           grep -q '^rule merge_lanes' /tmp/star.log || { echo "S1 has two lanes and should be merged" >&2; exit 1; }
