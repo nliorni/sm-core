@@ -118,8 +118,9 @@ cd pipelines/chipseq
 ```
 
 Then replace the toy rules, write the schema and config, add the CI job to
-`.github/workflows/ci.yml` (copy `rnaseq-checks`), and add the pipeline to the table in
-the top-level `README.md`.
+`.github/workflows/ci.yml` (copy `rnaseq-checks`), and add the pipeline to the
+"Available pipelines" table in the top-level `README.md`. When it is released, add a
+dated line at the top of that README's News! box, newest first.
 
 ## Snakemake version
 
