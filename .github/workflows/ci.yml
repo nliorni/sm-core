@@ -63,12 +63,17 @@ jobs:
           activate-environment: sm-core
           miniforge-version: latest
           channel-priority: strict
-      - uses: r-lib/actions/setup-r@v2
+
+      - name: R, for the syntax check
+        # Its own environment: r-lib/actions/setup-r puts another python3 ahead
+        # of sm-core's on PATH, and ./run.py then cannot import the launcher.
+        run: conda create -y -q -n rcheck -c conda-forge --override-channels r-base=4.5
 
       - name: Python, R, shell and YAML syntax
         run: |
+          python -c "import snakemake, colorama"   # the sm-core environment is the active one
           python -m py_compile run.py workflow/scripts/*.py
-          for f in workflow/scripts/*.R; do Rscript -e "invisible(parse('$f'))"; done
+          for f in workflow/scripts/*.R; do conda run -n rcheck Rscript -e "invisible(parse('$f'))"; done
           bash -n tests/ci/make_ci_inputs.sh tests/tutorial/*/*.sh resources/*.sh
           python -c "import glob, yaml; [yaml.safe_load(open(f)) for f in glob.glob('config/*.yaml') + glob.glob('workflow/**/*.yaml', recursive=True) + glob.glob('tests/**/*.yaml', recursive=True)]"
 
