@@ -1,0 +1,20 @@
+###############################################################################
+# sm-core/{{PIPELINE_NAME}}
+#
+# This file defines the workflow targets (the `-w` values accepted by
+# ./run.py); the rules behind them live in workflow/rules/.
+###############################################################################
+
+# Shared helpers: outputDir, scaled(), env(), load_samples(), notifications.
+include: "../../smcore/common.smk"
+
+SAMPLE_TABLE = load_samples()
+SAMPLES = list(SAMPLE_TABLE)
+
+include: "workflow/rules/example.smk"
+
+
+rule example:
+    input:
+        outputDir + "summary.tsv",
+    default_target: True

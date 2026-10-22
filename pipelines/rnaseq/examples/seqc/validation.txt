@@ -1,0 +1,34 @@
+
+=== star ===
+size factors: SEQC_A_1 1.00, SEQC_A_2 0.84, SEQC_A_3 1.04, SEQC_B_1 1.05, SEQC_B_2 1.03, SEQC_B_3 1.12
+
+ERCC spike-ins detected (>= 10 normalised counts in A and B): 43 of 92
+  mRNA-content shift (median log2 A/B of ratio-1 group): -0.60
+  subgroup  expected log2(A/B)  observed (median, centred)  n
+  A                      +2.00                       +1.91   9
+  B                      +0.00                       +0.00  11
+  C                      -0.58                       -0.59  11
+  D                      -1.00                       -0.99  12
+  Pearson r (observed vs expected, n=43): 0.992
+
+TaqMan qPCR genes matched (detected in all 8 assays, unique symbol): 665
+  log2(B/A) RNA-seq vs qPCR: Pearson r = 0.964, Spearman rho = 0.959
+
+=== salmon ===
+size factors: SEQC_A_1 1.00, SEQC_A_2 0.85, SEQC_A_3 1.05, SEQC_B_1 1.05, SEQC_B_2 1.03, SEQC_B_3 1.10
+
+ERCC spike-ins detected (>= 10 normalised counts in A and B): 44 of 92
+  mRNA-content shift (median log2 A/B of ratio-1 group): -0.62
+  subgroup  expected log2(A/B)  observed (median, centred)  n
+  A                      +2.00                       +1.90  10
+  B                      +0.00                       +0.00  11
+  C                      -0.58                       -0.59  11
+  D                      -1.00                       -1.00  12
+  Pearson r (observed vs expected, n=44): 0.992
+
+TaqMan qPCR genes matched (detected in all 8 assays, unique symbol): 665
+  log2(B/A) RNA-seq vs qPCR: Pearson r = 0.968, Spearman rho = 0.967
+
+=== STAR vs Salmon ===
+log2(B/A) over 14216 genes expressed in both: Pearson r = 0.995
+genes whose fold changes differ by more than 2x between branches: 72

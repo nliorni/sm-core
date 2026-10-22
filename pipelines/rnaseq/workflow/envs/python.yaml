@@ -1,0 +1,7 @@
+# sm-core/rnaseq: python
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.12

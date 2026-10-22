@@ -1,0 +1,35 @@
+# ============================================================================
+# sm-core/rnaseq: yeast smoke-test config (tests/tutorial/yeast)
+# ============================================================================
+# Runnable as is after ./download_tutorial_data.sh. Paths are relative to the
+# pipeline directory (pipelines/rnaseq/), which run.py uses as the working
+# directory wherever it is launched from; FASTQ paths in the samplesheet are
+# relative to the samplesheet itself.
+#
+# Resources are cut down to fit a laptop: the genome is 230 kb.
+# ============================================================================
+
+output_dir: "tests/tutorial/yeast/output/"
+samplesheet: "tests/tutorial/yeast/samplesheet.csv"
+
+reference:
+  genome: "tests/tutorial/yeast/reference/genome.fasta"
+  gtf: "tests/tutorial/yeast/reference/genes.gtf"
+  # No spike-ins in these reads: added to exercise the spike-in path.
+  spikein_fasta: "tests/tutorial/yeast/reference/ERCC92.fa"
+  threads: 2
+  star_index_mem_mb: 4000
+  salmon_index_mem_mb: 4000
+  # 2x101 bp reads.
+  star_sjdb_overhang: 100
+
+trimming:
+  threads: 2
+
+star:
+  threads: 2
+  mem_mb: 4000
+
+salmon:
+  threads: 2
+  mem_mb: 4000

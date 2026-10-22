@@ -1,0 +1,13 @@
+sample,fastq_1,fastq_2,strandedness,condition,replicate,rna
+SEQC_A_1,fastq/SRR896663_1.fastq.gz,fastq/SRR896663_2.fastq.gz,auto,A,1,UHRR
+SEQC_A_1,fastq/SRR896664_1.fastq.gz,fastq/SRR896664_2.fastq.gz,auto,A,1,UHRR
+SEQC_A_2,fastq/SRR896679_1.fastq.gz,fastq/SRR896679_2.fastq.gz,auto,A,2,UHRR
+SEQC_A_2,fastq/SRR896680_1.fastq.gz,fastq/SRR896680_2.fastq.gz,auto,A,2,UHRR
+SEQC_A_3,fastq/SRR896695_1.fastq.gz,fastq/SRR896695_2.fastq.gz,auto,A,3,UHRR
+SEQC_A_3,fastq/SRR896696_1.fastq.gz,fastq/SRR896696_2.fastq.gz,auto,A,3,UHRR
+SEQC_B_1,fastq/SRR896743_1.fastq.gz,fastq/SRR896743_2.fastq.gz,auto,B,1,HBRR
+SEQC_B_1,fastq/SRR896744_1.fastq.gz,fastq/SRR896744_2.fastq.gz,auto,B,1,HBRR
+SEQC_B_2,fastq/SRR896759_1.fastq.gz,fastq/SRR896759_2.fastq.gz,auto,B,2,HBRR
+SEQC_B_2,fastq/SRR896760_1.fastq.gz,fastq/SRR896760_2.fastq.gz,auto,B,2,HBRR
+SEQC_B_3,fastq/SRR896775_1.fastq.gz,fastq/SRR896775_2.fastq.gz,auto,B,3,HBRR
+SEQC_B_3,fastq/SRR896776_1.fastq.gz,fastq/SRR896776_2.fastq.gz,auto,B,3,HBRR

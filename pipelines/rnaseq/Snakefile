@@ -1,0 +1,94 @@
+###############################################################################
+# sm-core/rnaseq
+#
+# Paired-end short-read RNA-seq, from FASTQ to count matrices. This file
+# defines the workflow targets (the `-w` values accepted by ./run.py); the
+# rules behind them live in workflow/rules/.
+#
+# Two independent quantification branches start from the same trimmed reads
+# and each delivers its own count matrix:
+#
+#   star       STAR two-pass genome alignment -> sorted BAM -> STAR per-gene
+#              read counts; RNA-SeQC 2 QC on the BAM
+#   salmon     Salmon selective alignment (decoy-aware, bias-corrected) ->
+#              tximport gene and transcript matrices
+#   all        both, plus a table comparing their strandedness calls
+#
+#   reference  GTF filtering, transcriptome, STAR and Salmon indices (run once)
+#   trim       fastp adapter/quality trimming only
+###############################################################################
+
+include: "../../smcore/common.smk"
+include: "workflow/rules/common.smk"
+include: "workflow/rules/reference.smk"
+include: "workflow/rules/preprocess.smk"
+include: "workflow/rules/star.smk"
+include: "workflow/rules/salmon.smk"
+include: "workflow/rules/counts.smk"
+include: "workflow/rules/qc.smk"
+
+
+def per_sample(*patterns):
+    return [path for pattern in patterns for path in expand(outputDir + pattern, sample=SAMPLES)]
+
+
+def star_outputs(wildcards=None):
+    out = per_sample(
+        "results/star/{sample}/{sample}.bam",
+        "results/star/{sample}/{sample}.bam.bai",
+    )
+    out += [COUNTS_DIR + "star/" + name for name in STAR_COUNT_OUTPUTS]
+    out.append(QC_DIR + "star/multiqc_report.html")
+    return out
+
+
+def salmon_outputs(wildcards=None):
+    out = per_sample("results/salmon/{sample}/quant.sf")
+    out += [COUNTS_DIR + "salmon/" + name for name in TXIMPORT_OUTPUTS]
+    out.append(QC_DIR + "salmon/multiqc_report.html")
+    return out
+
+
+rule star:
+    input:
+        star_outputs,
+
+
+rule salmon:
+    input:
+        salmon_outputs,
+
+
+rule all:
+    input:
+        star_outputs,
+        salmon_outputs,
+        QC_DIR + "strandedness.tsv",
+    default_target: True
+
+
+def reference_outputs(wildcards):
+    out = [GENOME_FA, ANNOTATION_GTF, TX2GENE, TRANSCRIPTS_FA, star_index(), salmon_index()]
+    if config["qc"]["rnaseqc"]:
+        out.append(COLLAPSED_GTF)
+    return out
+
+
+rule reference:
+    input:
+        reference_outputs,
+
+
+def trim_outputs(wildcards):
+    if not trimming_enabled():
+        raise WorkflowError("The `trim` target needs trimming.enabled: true.")
+    return per_sample(
+        "results/fastp/{sample}_R1.trimmed.fastq.gz",
+        "results/fastp/{sample}_R2.trimmed.fastq.gz",
+        "results/fastp/{sample}.fastp.json",
+    )
+
+
+rule trim:
+    input:
+        trim_outputs,

@@ -1,0 +1,7 @@
+# sm-core/rnaseq: rnaseqc
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - rna-seqc=2.4.2

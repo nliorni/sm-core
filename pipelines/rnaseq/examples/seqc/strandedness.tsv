@@ -1,0 +1,7 @@
+sample	declared	star_inferred	salmon_inferred	star_forward_fraction	salmon_forward_fraction	agreement
+SEQC_A_1	auto	unstranded	unstranded	0.5001	0.4994	yes
+SEQC_A_2	auto	unstranded	unstranded	0.4998	0.4991	yes
+SEQC_A_3	auto	unstranded	unstranded	0.5002	0.4992	yes
+SEQC_B_1	auto	unstranded	unstranded	0.4999	0.4992	yes
+SEQC_B_2	auto	unstranded	unstranded	0.5001	0.4994	yes
+SEQC_B_3	auto	unstranded	unstranded	0.5005	0.4995	yes

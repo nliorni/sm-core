@@ -1,0 +1,13 @@
+# sm-core/rnaseq: star
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  # Build pinned: from h5ca1c30_7 on, bioconda compiles every STAR variant --
+  # STAR-plain included -- with AVX2 instructions, and STAR dies with SIGILL
+  # ("Illegal instruction") on CPUs without AVX2, such as AMD Opteron
+  # (Bulldozer) nodes. h5ca1c30_4 runs on those and on current CPUs alike, and
+  # picks its fastest SIMD variant at start-up.
+  - star=2.7.11b=h5ca1c30_4
+  - samtools=1.23.1

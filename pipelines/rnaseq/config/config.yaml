@@ -1,0 +1,213 @@
+# ============================================================================
+# sm-core/rnaseq: project configuration (human, GRCh38 + GENCODE)
+# ============================================================================
+#
+# One YAML file per project. Copy this template, rename it, and edit the
+# blocks marked  >>> EDIT PER PROJECT <<<  in SECTION 1 plus the paths in
+# SECTION 2. Everything else is a default that usually does not need to
+# change; workflow/schemas/config.schema.yaml holds every key's default and
+# type, and the run stops at start-up if a value is wrong.
+#
+#   cp config/config.yaml config_my_project.yaml
+#
+# Dry-run before launching:
+#   ./run.py -w all -c config_my_project.yaml -q 32 -n
+#
+# Workflow targets (./run.py --list-workflows):
+#   star        STAR genome BAM + STAR gene count matrix + RNA-SeQC + MultiQC
+#   salmon      Salmon quantification + tximport matrices + MultiQC
+#   all         both branches, plus a comparison of their strandedness calls
+#   reference   build the reference indices once
+#   trim        fastp trimming only
+#
+# Assumptions
+#   - Paired-end short reads (Illumina/MGI, >= 2x50 bp).
+#   - Genome and annotation from the same source and assembly (SECTION 2).
+#   - Relative paths are relative to the pipeline directory
+#     (pipelines/rnaseq/); absolute paths are recommended for real projects.
+#
+# See docs/configuration.md for the full key-by-key reference and
+# docs/resources.md for where to download every reference file.
+# ============================================================================
+
+
+# ############################################################################
+# SECTION 1 - PROJECT & SAMPLES                         >>> EDIT PER PROJECT <<<
+# ############################################################################
+
+# Main output directory. results/, logs/ and benchmarks/ are created inside
+# it, and reference/ too unless reference.dir points elsewhere.
+output_dir: "/path/to/output/MY_PROJECT/"
+
+# OPTIONAL - email for pipeline-completion notifications (success or failure)
+# via the system `mail` command. Omit to opt out.
+# notify_email: "you@institution.edu"
+
+# Samples: declare them with EITHER a samplesheet (recommended) OR `samples:`.
+#
+# (a) samplesheet -- nf-core/rnaseq-compatible CSV (or .tsv):
+#
+#       sample,fastq_1,fastq_2,strandedness,condition,batch
+#       CTRL_1,/data/CTRL_1_L001_R1.fastq.gz,/data/CTRL_1_L001_R2.fastq.gz,auto,control,b1
+#       CTRL_1,/data/CTRL_1_L002_R1.fastq.gz,/data/CTRL_1_L002_R2.fastq.gz,auto,control,b1
+#       TREAT_1,/data/TREAT_1_R1.fastq.gz,/data/TREAT_1_R2.fastq.gz,auto,treated,b1
+#
+#     Rows sharing a `sample` are lanes/runs of one library and are merged.
+#     `strandedness` is optional (default below). Every further column
+#     (condition, batch, ...) is sample metadata: it becomes the colData of
+#     the SummarizedExperiment outputs, so a DESeq2 design can use it as is.
+#     Relative FASTQ paths are read relative to the samplesheet file.
+samplesheet: "/path/to/samplesheet.csv"
+
+# (b) samples -- the sm-core family convention, FASTQ prefixes:
+#       {prefix}_{unit[0]}.{extension}  and  {prefix}_{unit[1]}.{extension}
+#     A list of prefixes merges lanes/runs. No metadata columns this way.
+# unit: ["R1", "R2"]
+# extension: "fastq.gz"
+# samples:
+#   CTRL_1: ["/data/CTRL_1_L001", "/data/CTRL_1_L002"]
+#   TREAT_1: "/data/TREAT_1"
+
+# Library strandedness, for every sample without a samplesheet value:
+#   auto        infer it from the data (each branch separately) -- recommended
+#   reverse     dUTP-based kits: Illumina TruSeq Stranded, NEB Ultra II Directional
+#   forward     e.g. Takara SMARTer Stranded (pico v1), ligation-based kits
+#   unstranded  e.g. Illumina TruSeq (non-stranded), most SMART-seq protocols
+# A declared value that the data contradicts is flagged (results/qc/) and,
+# with qc.fail_on_strandedness_mismatch, stops the run.
+strandedness: auto
+
+
+# ############################################################################
+# SECTION 2 - REFERENCE
+# ############################################################################
+#
+# Genome and annotation MUST come from the same source and assembly:
+# GENCODE with GENCODE, Ensembl with Ensembl. GENCODE's primary-assembly
+# genome and its matching primary-assembly GTF are recommended for human and
+# mouse -- no alt contigs, so no reads lost to multimapping between a
+# chromosome and its alternate haplotypes. docs/resources.md lists the exact
+# files, URLs and sizes.
+
+reference:
+  # Plain or gzipped.
+  genome: "/path/to/reference/GRCh38.primary_assembly.genome.fa.gz"
+  gtf: "/path/to/reference/gencode.v50.primary_assembly.annotation.gtf.gz"
+
+  # OPTIONAL - spike-in sequences (e.g. ERCC92.fa), appended to the genome and
+  # annotated as one gene each (gene_type "spikein"), so they are counted by
+  # both branches like any gene.
+  spikein_fasta: null
+
+  # Where the derived reference (filtered GTF, transcriptome, indices) is
+  # built. Default <output_dir>/reference/. Point several projects that use
+  # the same genome + GTF at one shared directory to build the indices once
+  # -- but never run two projects that would BUILD it at the same time.
+  dir: null
+
+  # OPTIONAL - indices built elsewhere, used instead of building them. They
+  # must come from exactly the genome + GTF above (+ spike-ins): the count
+  # matrices are annotated from that GTF.
+  star_index: null
+  salmon_index: null
+
+  # Read length - 1 is optimal for STAR's junction database; 100 is within a
+  # few percent of optimal for anything from 2x75 to 2x150.
+  star_sjdb_overhang: 100
+  salmon_kmer: 31
+
+  # Index building. Measured on human GRCh38 + GENCODE 50: STAR peaks at
+  # 38 GB, Salmon's decoy-aware index at 20 GB (docs/resources.md).
+  threads: 16
+  star_index_mem_mb: 48000
+  salmon_index_mem_mb: 32000
+
+
+# ############################################################################
+# SECTION 3 - SOFTWARE ENVIRONMENTS
+# ############################################################################
+#
+# By default every rule builds its own conda environment from
+# workflow/envs/<name>.yaml (exact versions pinned) on first use, and nothing
+# here needs setting. Sites with shared, pre-built environments can point the
+# pipeline at them instead -- an environment prefix or another YAML.
+#
+# Environment names: fastp, star, salmon, samtools, gffread, rnaseqc,
+# multiqc, python, bioconductor.
+#
+# conda_envs:
+#   star: "/shared/condaEnvs/star-2.7.11b"
+
+
+# ############################################################################
+# SECTION 4 - TRIMMING (fastp)
+# ############################################################################
+
+trimming:
+  # fastp always runs, for its read QC. With enabled: true it also trims
+  # adapters (found by mate overlap, so no adapter sequence is needed),
+  # low-quality tails and poly-G tails (two-colour instruments), and both
+  # branches read the trimmed reads. Recommended: Salmon's selective
+  # alignment does not soft-clip, so untrimmed adapter read-through lowers
+  # alignment scores and loses fragments that STAR would simply clip.
+  enabled: true
+  # Pairs with either mate shorter than this after trimming are dropped.
+  min_length: 20
+  # Extra fastp arguments, e.g. "--trim_front1 3" for some low-input kits.
+  extra: ""
+  threads: 8
+  mem_mb: 4000
+
+
+# ############################################################################
+# SECTION 5 - STAR BRANCH (-w star)
+# ############################################################################
+
+star:
+  threads: 16
+  # Human: peaks at 30 GB, the index loaded in memory.
+  mem_mb: 40000
+  # Two-pass mode: junctions found in pass 1 are added before pass 2, so
+  # reads over unannotated junctions align. Costs ~1.5x the time.
+  two_pass: true
+  # The genome BAM is sorted by samtools, not STAR.
+  sort_threads: 4
+  sort_mem_per_thread: "1G"
+  # Extra STAR arguments, appended last (so they override the defaults in
+  # workflow/rules/star.smk).
+  extra: ""
+
+
+# ############################################################################
+# SECTION 6 - SALMON BRANCH (-w salmon)
+# ############################################################################
+
+salmon:
+  threads: 8
+  # Human: peaks at 27 GB -- the decoy-aware index holds the whole genome.
+  mem_mb: 32000
+  # --gcBias / --seqBias: fragment-GC and priming-bias correction. Keep them
+  # unless the library is 3'-tag (QuantSeq, Lexogen 3'), where they do not
+  # apply.
+  extra: "--gcBias --seqBias"
+
+
+# ############################################################################
+# SECTION 7 - QC
+# ############################################################################
+
+qc:
+  # Strandedness calls (nf-core/rnaseq thresholds): >= stranded_threshold of
+  # fragments on one strand is stranded; forward and reverse within
+  # unstranded_threshold of each other is unstranded; anything between is
+  # undetermined.
+  stranded_threshold: 0.8
+  unstranded_threshold: 0.1
+  # Stop the run when a declared strandedness is contradicted by the data,
+  # instead of only flagging it.
+  fail_on_strandedness_mismatch: false
+  # RNA-SeQC 2 on the STAR BAM (exonic/intronic/intergenic and rRNA rates,
+  # 3'/5' bias, genes detected).
+  rnaseqc: true
+  rnaseqc_extra: ""
+  multiqc_extra: ""

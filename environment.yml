@@ -1,12 +1,21 @@
+# Launcher environment: what you activate to run any sm-core pipeline.
+# The analysis software is NOT here -- Snakemake builds it per rule from each
+# pipeline's workflow/envs/ (see docs/usage.md).
+#
+#   conda env create -f environment.yml
+#   conda activate sm-core
 name: sm-core
 channels:
   - conda-forge
   - bioconda
+  - nodefaults
 dependencies:
   - python=3.11
+  # Exact: the launcher drives Snakemake's Python API (snakemake.api), whose
+  # shape changed between 8 and 9 (see docs/conventions.md).
   - snakemake-minimal=9.16.0
-  # Only needed for -cl/--cluster (generic shell-command cluster
-  # submission, e.g. PBS qsub). See PIPELINE.md for what this plugin is.
+  # Only needed for -cl/--cluster (generic shell-command cluster submission,
+  # e.g. PBS qsub). See docs/usage.md.
   - snakemake-executor-plugin-cluster-generic=1.0.9
   - colorama
   - pyyaml

@@ -1,0 +1,171 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: >-
+  sm-core/rnaseq project configuration. Validated at parse time; every
+  `default` here is filled in when the key is absent, so config/config.yaml
+  only has to state what differs. The annotated template is
+  config/config.yaml.
+type: object
+
+properties:
+  output_dir:
+    type: string
+    description: Main output directory.
+
+  samplesheet:
+    type: string
+    description: nf-core-style CSV/TSV with sample,fastq_1,fastq_2[,strandedness,...].
+  samples:
+    type: object
+    description: SAMPLE_ID -> FASTQ prefix, or list of prefixes (lanes/runs merged).
+  unit:
+    type: array
+    items: {type: string}
+    minItems: 2
+    maxItems: 2
+  extension:
+    type: string
+
+  strandedness:
+    type: string
+    enum: [auto, unstranded, forward, reverse]
+    default: auto
+    description: Default library strandedness; a samplesheet column overrides it per sample.
+
+  notify_email:
+    type: string
+  conda_envs:
+    type: object
+    additionalProperties: {type: string}
+
+  reference:
+    type: object
+    properties:
+      genome:
+        type: string
+        description: Genome FASTA, plain or gzipped.
+      gtf:
+        type: string
+        description: Gene annotation GTF matching the genome, plain or gzipped.
+      spikein_fasta:
+        type: [string, "null"]
+        default: null
+      dir:
+        type: [string, "null"]
+        default: null
+      star_index:
+        type: [string, "null"]
+        default: null
+      salmon_index:
+        type: [string, "null"]
+        default: null
+      star_sjdb_overhang:
+        type: integer
+        minimum: 1
+        default: 100
+      salmon_kmer:
+        type: integer
+        minimum: 15
+        maximum: 31
+        default: 31
+      threads:
+        type: integer
+        minimum: 1
+        default: 16
+      star_index_mem_mb:
+        type: integer
+        default: 48000
+      salmon_index_mem_mb:
+        type: integer
+        default: 32000
+    required: [genome, gtf]
+
+  trimming:
+    type: object
+    default: {}
+    properties:
+      enabled:
+        type: boolean
+        default: true
+      min_length:
+        type: integer
+        minimum: 1
+        default: 20
+      extra:
+        type: string
+        default: ""
+      threads:
+        type: integer
+        minimum: 1
+        default: 8
+      mem_mb:
+        type: integer
+        default: 4000
+
+  star:
+    type: object
+    default: {}
+    properties:
+      threads:
+        type: integer
+        minimum: 1
+        default: 16
+      mem_mb:
+        type: integer
+        default: 40000
+      two_pass:
+        type: boolean
+        default: true
+      sort_threads:
+        type: integer
+        minimum: 1
+        default: 4
+      sort_mem_per_thread:
+        type: string
+        default: "1G"
+      extra:
+        type: string
+        default: ""
+
+  salmon:
+    type: object
+    default: {}
+    properties:
+      threads:
+        type: integer
+        minimum: 1
+        default: 8
+      mem_mb:
+        type: integer
+        default: 32000
+      extra:
+        type: string
+        default: "--gcBias --seqBias"
+
+  qc:
+    type: object
+    default: {}
+    properties:
+      stranded_threshold:
+        type: number
+        minimum: 0.5
+        maximum: 1
+        default: 0.8
+      unstranded_threshold:
+        type: number
+        minimum: 0
+        maximum: 0.5
+        default: 0.1
+      fail_on_strandedness_mismatch:
+        type: boolean
+        default: false
+      rnaseqc:
+        type: boolean
+        default: true
+      rnaseqc_extra:
+        type: string
+        default: ""
+      multiqc_extra:
+        type: string
+        default: ""
+
+required: [output_dir, reference]

@@ -1,47 +1,66 @@
 #!/usr/bin/env python3
 
 """
-Bootstrap a new pipeline from this sm-core template.
+Start a new pipeline of the sm-core suite from templates/pipeline/.
 
 Usage:
-    ./bootstrap.py <PipelineName>
+    ./bootstrap.py <name> "<one-line description>"
 
-Replaces the {{PIPELINE_NAME}} placeholder in run.py, README.md, and
-PIPELINE.md, then prints a checklist of what to edit next.
+    ./bootstrap.py chipseq "ChIP-seq: FASTQ to peaks"
+
+Copies templates/pipeline/ to pipelines/<name>/, fills in the
+{{PIPELINE_NAME}} / {{PIPELINE_DESCRIPTION}} placeholders, and prints what to
+edit next. The new pipeline already runs: its toy `example` target works
+through the shared launcher (smcore/launcher.py) and helpers
+(smcore/common.smk) exactly as every other pipeline of the suite does.
 """
 
+import re
+import shutil
 import sys
 from pathlib import Path
 
-PLACEHOLDER = "{{PIPELINE_NAME}}"
-FILES = ["run.py", "README.md", "PIPELINE.md"]
+ROOT = Path(__file__).resolve().parent
+TEMPLATE = ROOT / "templates" / "pipeline"
+PLACEHOLDERS = ("{{PIPELINE_NAME}}", "{{PIPELINE_DESCRIPTION}}")
+TEXT_SUFFIXES = {".py", ".smk", ".yaml", ".yml", ".md", ".txt", ""}
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
-        sys.exit("Usage: ./bootstrap.py <PipelineName>")
+    if len(sys.argv) != 3:
+        sys.exit(__doc__)
+    name, description = sys.argv[1], sys.argv[2]
+    if not re.fullmatch(r"[a-z][a-z0-9_-]*", name):
+        sys.exit(f"Pipeline name '{name}' must be lowercase letters, digits, '-' or '_'.")
 
-    name = sys.argv[1]
-    root = Path(__file__).resolve().parent
+    target = ROOT / "pipelines" / name
+    if target.exists():
+        sys.exit(f"{target} already exists.")
 
-    for fname in FILES:
-        path = root / fname
-        if not path.exists():
+    shutil.copytree(
+        TEMPLATE, target,
+        ignore=shutil.ignore_patterns(".snakemake", ".smk_locks", "logs", "__pycache__"),
+    )
+    for path in target.rglob("*"):
+        if not path.is_file() or path.suffix not in TEXT_SUFFIXES:
             continue
         text = path.read_text()
-        if PLACEHOLDER not in text:
-            continue
-        path.write_text(text.replace(PLACEHOLDER, name))
-        print(f"updated {fname}")
+        if any(p in text for p in PLACEHOLDERS):
+            text = text.replace(PLACEHOLDERS[0], name).replace(PLACEHOLDERS[1], description)
+            path.write_text(text)
+    for leftover in (target / "tests" / "tutorial" / "output").glob("*"):
+        if leftover.name != ".gitkeep":
+            shutil.rmtree(leftover) if leftover.is_dir() else leftover.unlink()
 
+    print(f"Created pipelines/{name}/. It runs already:")
+    print(f"  cd pipelines/{name} && ./run.py -w example -c tests/tutorial/config_tutorial.yaml -q 2 --no-conda")
     print()
-    print(f"Bootstrapped '{name}'. Next steps (see PIPELINE.md for detail):")
-    print("  1. Edit WORKFLOWS in run.py with your real workflow targets.")
-    print("  2. Replace workflow/rules/example.smk (+ scripts/, envs/) with your rules.")
-    print("  3. Edit config_template.yaml for your project's config shape.")
-    print("  4. Update tests/tutorial/ with real (or still-toy) demo data.")
-    print("  5. rm -rf .git && git init   # start this pipeline's own history")
-    print("  6. Delete this bootstrap.py once you no longer need it (optional).")
+    print("Next steps (see docs/conventions.md):")
+    print("  1. Edit `workflows` in run.py with your real targets.")
+    print("  2. Replace workflow/rules/example.smk (+ scripts/, envs/) with real rules.")
+    print("  3. Edit config/config.yaml for the project config shape (and add a schema).")
+    print("  4. Replace tests/tutorial/ with a real dataset + truth set, and add tests/ci/.")
+    print("  5. Add the pipeline to the table in the top-level README.md and to CI.")
     return 0
 
 
