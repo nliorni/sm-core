@@ -21,15 +21,16 @@ defaults:
 
 jobs:
   framework:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: actions/checkout@v5
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           environment-file: environment.yml
           activate-environment: sm-core
           miniforge-version: latest
           channel-priority: strict
+          conda-remove-defaults: "true"   # with nodefaults in environment.yml
 
       - name: Python syntax
         run: python -m py_compile run.py bootstrap.py smcore/*.py templates/pipeline/run.py
@@ -51,7 +52,7 @@ jobs:
           test -s tests/tutorial/output/summary.tsv
 
   rnaseq-checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         # A job's defaults.run replaces the workflow's, so the login shell
@@ -59,13 +60,14 @@ jobs:
         shell: bash -el {0}
         working-directory: pipelines/rnaseq
     steps:
-      - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: actions/checkout@v5
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           environment-file: environment.yml
           activate-environment: sm-core
           miniforge-version: latest
           channel-priority: strict
+          conda-remove-defaults: "true"   # with nodefaults in environment.yml
 
       - name: R, for the syntax check
         # Its own environment, so R never shares PATH with the launcher's Python.
@@ -117,7 +119,7 @@ jobs:
           grep -q "needs trimming.enabled: true" /tmp/trim.log || { cat /tmp/trim.log; exit 1; }
 
   rnaseq-tutorial:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: rnaseq-checks
     defaults:
       run:
@@ -126,13 +128,14 @@ jobs:
         shell: bash -el {0}
         working-directory: pipelines/rnaseq
     steps:
-      - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
+      - uses: actions/checkout@v5
+      - uses: conda-incubator/setup-miniconda@v4
         with:
           environment-file: environment.yml
           activate-environment: sm-core
           miniforge-version: latest
           channel-priority: strict
+          conda-remove-defaults: "true"   # with nodefaults in environment.yml
 
       - name: Download the yeast tutorial data
         run: tests/tutorial/yeast/download_tutorial_data.sh
