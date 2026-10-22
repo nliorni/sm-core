@@ -54,6 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
+        # A job's defaults.run replaces the workflow's, so the login shell
+        # that activates the conda environment has to be restated here.
+        shell: bash -el {0}
         working-directory: pipelines/rnaseq
     steps:
       - uses: actions/checkout@v4
@@ -65,8 +68,7 @@ jobs:
           channel-priority: strict
 
       - name: R, for the syntax check
-        # Its own environment: r-lib/actions/setup-r puts another python3 ahead
-        # of sm-core's on PATH, and ./run.py then cannot import the launcher.
+        # Its own environment, so R never shares PATH with the launcher's Python.
         run: conda create -y -q -n rcheck -c conda-forge --override-channels r-base=4.5
 
       - name: Python, R, shell and YAML syntax
@@ -115,6 +117,9 @@ jobs:
     needs: rnaseq-checks
     defaults:
       run:
+        # A job's defaults.run replaces the workflow's, so the login shell
+        # that activates the conda environment has to be restated here.
+        shell: bash -el {0}
         working-directory: pipelines/rnaseq
     steps:
       - uses: actions/checkout@v4
