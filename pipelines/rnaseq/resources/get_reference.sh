@@ -18,6 +18,7 @@
 ##   --spikein  ercc                   also fetch the ERCC92 sequences + concentrations
 ##   --dest     directory to download into (created; required)
 ##   --check    resolve every URL without downloading
+##   --https    use https:// for EBI and Ensembl (automatic when a proxy is set)
 ##
 ## What it fetches, and why those files (docs/resources.md has the full story):
 ##   - the PRIMARY ASSEMBLY genome: chromosomes + unplaced scaffolds, no alt
@@ -31,8 +32,10 @@
 ## Re-running resumes: files already present and verified are skipped.
 ## A MANIFEST.tsv (file, URL, checksum, date) records exactly what was fetched.
 ##
-## Needs curl, gzip, md5sum, sum, unzip. EBI is used over ftp://, which it serves
-## about ten times faster than https://.
+## Needs curl, gzip, md5sum, sum, unzip. EBI and Ensembl are used over ftp://,
+## which EBI serves about ten times faster than https://. Behind an HTTP proxy
+## (http_proxy / https_proxy set, as on many clusters) ftp:// directory listings
+## do not work, so https:// is used instead.
 ## ============================================================================
 set -euo pipefail
 
@@ -42,6 +45,8 @@ RELEASE=""
 SPIKEIN=""
 DEST=""
 CHECK=0
+PROTO=ftp
+[[ -n "${https_proxy:-}${HTTPS_PROXY:-}${http_proxy:-}${HTTP_PROXY:-}${ftp_proxy:-}${FTP_PROXY:-}" ]] && PROTO=https
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -53,6 +58,7 @@ while (( $# )); do
     --spikein) SPIKEIN="$2"; shift 2 ;;
     --dest)    DEST="$2"; shift 2 ;;
     --check)   CHECK=1; shift ;;
+    --https)   PROTO=https; shift ;;
     -h|--help) sed -n '3,/^## ====/{/^## ====/!p}' "$0" | sed 's/^## \{0,1\}//'; exit 0 ;;
     *) die "unknown option $1 (see --help)" ;;
   esac
@@ -62,6 +68,16 @@ done
 
 ERCC_ZIP="https://assets.thermofisher.com/TFS-Assets/LSG/manuals/ERCC92.zip"
 ERCC_CONC="https://assets.thermofisher.com/TFS-Assets/LSG/manuals/cms_095046.txt"
+
+list_dir() {
+  # File names in a remote directory: an FTP name listing, or the links of an
+  # https:// index page.
+  if [[ "${PROTO}" == ftp ]]; then
+    curl -sfl --max-time 60 "$1/"
+  else
+    curl -sf --max-time 60 "$1/" | grep -oE 'href="[^"?/][^"]*"' | sed 's/^href="//; s/"$//'
+  fi
+}
 
 ## ---------------------------------------------------------------------------
 ## Resolve the two URLs and how to verify them
@@ -73,7 +89,7 @@ case "${SOURCE}" in
       mouse) RELEASE="${RELEASE:-M39}"; ASM=GRCm39; DIR=Gencode_mouse; TAG="v${RELEASE}" ;;
       *) die "--source gencode covers human and mouse; use --source ensembl for ${SPECIES}" ;;
     esac
-    BASE="ftp://ftp.ebi.ac.uk/pub/databases/gencode/${DIR}/release_${RELEASE}"
+    BASE="${PROTO}://ftp.ebi.ac.uk/pub/databases/gencode/${DIR}/release_${RELEASE}"
     GENOME="${ASM}.primary_assembly.genome.fa.gz"
     GTF="gencode.${TAG}.primary_assembly.annotation.gtf.gz"
     GENOME_URL="${BASE}/${GENOME}"
@@ -83,16 +99,16 @@ case "${SOURCE}" in
     ;;
   ensembl)
     RELEASE="${RELEASE:-116}"
-    BASE="ftp://ftp.ensembl.org/pub/release-${RELEASE}"
+    BASE="${PROTO}://ftp.ensembl.org/pub/release-${RELEASE}"
     FASTA_DIR="${BASE}/fasta/${SPECIES}/dna"
     GTF_DIR="${BASE}/gtf/${SPECIES}"
-    listing="$(curl -sfl --max-time 60 "${FASTA_DIR}/")" || die "no Ensembl ${RELEASE} FASTA for '${SPECIES}' (${FASTA_DIR})"
+    listing="$(list_dir "${FASTA_DIR}")" || die "no Ensembl ${RELEASE} FASTA for '${SPECIES}' (${FASTA_DIR})"
     # Unmasked primary assembly if the species has one (it has alt haplotypes
     # to leave out), toplevel otherwise. Never the soft/hard-masked dna_sm/dna_rm.
     GENOME="$(grep -E '\.dna\.primary_assembly\.fa\.gz$' <<< "${listing}" || true)"
     [[ -n "${GENOME}" ]] || GENOME="$(grep -E '\.dna\.toplevel\.fa\.gz$' <<< "${listing}" || true)"
     [[ -n "${GENOME}" ]] || die "no unmasked genome FASTA in ${FASTA_DIR}"
-    GTF="$(curl -sfl --max-time 60 "${GTF_DIR}/" | grep -E "\.${RELEASE}\.gtf\.gz$" | grep -vE '\.(chr|abinitio|chr_patch_hapl_scaff)\.' || true)"
+    GTF="$(list_dir "${GTF_DIR}" | grep -E "\.${RELEASE}\.gtf\.gz$" | grep -vE '\.(chr|abinitio|chr_patch_hapl_scaff)\.' || true)"
     [[ -n "${GTF}" ]] || die "no Ensembl ${RELEASE} GTF for '${SPECIES}' (${GTF_DIR})"
     GENOME_URL="${FASTA_DIR}/${GENOME}"
     GTF_URL="${GTF_DIR}/${GTF}"
