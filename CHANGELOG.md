@@ -3,6 +3,15 @@
 Changes to the sm-core framework (`smcore/`, the launcher, templates). Each pipeline keeps
 its own `pipelines/<name>/CHANGELOG.md`.
 
+## [Unreleased]
+
+### Fixed
+- The launcher makes sure Snakemake can run `conda`. `conda activate` provides a shell
+  function, not a program, and some shell setups leave the base installation off `PATH`:
+  Snakemake then failed with "conda: command not found" / "Error running conda info". The
+  launcher now finds the base installation (from `CONDA_EXE`, or from the environment it
+  runs in) and adds it to `PATH`, or stops at once with instructions.
+
 ## [0.2.0] - 2026-10-20
 
 ### Changed
