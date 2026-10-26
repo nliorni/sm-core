@@ -63,6 +63,10 @@ Add `--spikein ercc` for the ERCC92 spike-ins (section 5), `--release N` for ano
 release, and `--check` to resolve the URLs without downloading. The script needs only
 `curl`, `gzip`, `md5sum`, `sum` and `unzip`. `--help` lists every option.
 
+Behind an HTTP proxy (`http_proxy` / `https_proxy` set, as on many clusters), the
+script uses `https://` instead of `ftp://` by itself: FTP directory listings do not
+pass through such proxies. `--https` forces it.
+
 Then [build the indices](#6-building-the-indices) once.
 
 ## 2. Human: GRCh38, GENCODE (recommended)
@@ -80,7 +84,7 @@ curl -O ${BASE}/MD5SUMS && md5sum -c MD5SUMS --ignore-missing
 ```
 
 Use `ftp://`, not `https://`: EBI serves the same files about ten times faster over plain
-FTP.
+FTP. Behind an HTTP proxy, use `https://`.
 
 **Which files, and why.**
 
