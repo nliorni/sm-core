@@ -17,6 +17,7 @@ import argparse
 import fcntl
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -760,6 +761,37 @@ Examples:
     return parser
 
 
+def ensure_conda_on_path() -> None:
+    # Snakemake runs `conda` as a program, so it must be an executable on PATH.
+    # `conda activate` provides a shell function, which child processes do not
+    # inherit, and puts only the activated environment's bin/ on PATH, where
+    # conda itself is not installed. Some shell setups therefore leave
+    # `conda activate` working while Snakemake fails with "conda: command not
+    # found". Find the base installation and append it, so the active
+    # environment's own tools still come first.
+    if shutil.which("conda"):
+        return
+    candidates = []
+    if os.environ.get("CONDA_EXE"):
+        candidates.append(Path(os.environ["CONDA_EXE"]).parent)
+    prefix = Path(sys.prefix)
+    if prefix.parent.name == "envs":  # <base>/envs/sm-core
+        base = prefix.parent.parent
+        candidates += [base / "condabin", base / "bin"]
+    for directory in candidates:
+        if (directory / "conda").is_file() and os.access(directory / "conda", os.X_OK):
+            os.environ["PATH"] = os.environ.get("PATH", "") + os.pathsep + str(directory)
+            info(f"conda was not on PATH; using {directory / 'conda'}")
+            return
+    die(
+        "Snakemake needs the `conda` command on PATH, and it is not there "
+        "(`conda activate` alone only provides a shell function). Initialise "
+        "conda in this shell first, e.g. `eval \"$(<conda-base>/bin/conda shell.bash hook)\"` "
+        "or `source <conda-base>/etc/profile.d/conda.sh`, then `conda activate sm-core`. "
+        "Or run with --no-conda if every tool is already installed."
+    )
+
+
 def main(pipeline: Pipeline, argv: Optional[List[str]] = None) -> int:
     parser = build_parser(pipeline)
     args = parser.parse_args(argv)
@@ -770,5 +802,8 @@ def main(pipeline: Pipeline, argv: Optional[List[str]] = None) -> int:
 
     if not args.configfile:
         die("Missing config file. Use -c config_MyProject.yaml")
+
+    if not args.no_conda:
+        ensure_conda_on_path()
 
     return run_snakemake(pipeline, args)
