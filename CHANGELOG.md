@@ -5,6 +5,14 @@ its own `pipelines/<name>/CHANGELOG.md`.
 
 ## [Unreleased]
 
+### Added
+- `smcore/plotting`: one figure style for every pipeline of the suite (semantic colours:
+  red up, blue down, grey not significant; Arial-like type found on the system; PNG and
+  PDF with editable text), adapted from Chen Liu's figures4papers. Also a matplotlib
+  style file, `smcore/plotting/smcore.mplstyle`, for notebooks.
+- `SMCORE_ROOT` in `smcore/common.smk`: lets scripts running in a rule's conda
+  environment import shared sm-core code.
+
 ### Fixed
 - The launcher makes sure Snakemake can run `conda`. `conda activate` provides a shell
   function, not a program, and some shell setups leave the base installation off `PATH`:

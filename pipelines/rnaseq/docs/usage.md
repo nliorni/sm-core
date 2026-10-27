@@ -12,9 +12,10 @@ This page covers what is specific to rnaseq.
 
 | Target | Runs | Delivers |
 |---|---|---|
-| `all` | both branches | everything below, plus `results/qc/strandedness.tsv` |
+| `all` | both branches (and `de`, when configured) | everything below, plus `results/qc/strandedness.tsv` |
 | `star` | fastp → STAR → GeneCounts, RNA-SeQC | `results/counts/star/`, BAMs, `results/qc/star/multiqc_report.html` |
 | `salmon` | fastp → Salmon → tximport | `results/counts/salmon/`, `results/qc/salmon/multiqc_report.html` |
+| `de` | PyDESeq2 per contrast, ORA, GSEA (and the counts it needs) | `results/de/` — needs `de.analyses` |
 | `reference` | reference preparation and both indices | `reference.dir` |
 | `trim` | fastp | trimmed reads (normally temporary) |
 

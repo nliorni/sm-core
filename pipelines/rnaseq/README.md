@@ -29,7 +29,8 @@ where the two disagree, you can see it.
 |---|---|---|
 | `star` | Sorted, indexed genome BAM; **integer gene count matrix**; RNA-SeQC metrics; MultiQC report | fastp, STAR, samtools, RNA-SeQC 2, MultiQC |
 | `salmon` | Transcript quantification; **gene and transcript count matrices** (counts, length-scaled counts, TPM, length offsets); MultiQC report | fastp, Salmon, tximport, MultiQC |
-| `all` | Both, plus a STAR-vs-Salmon comparison of the strandedness each inferred | |
+| `all` | Both, plus a STAR-vs-Salmon comparison of the strandedness each inferred (and `de`, when configured) | |
+| `de` | **Differential expression** for the contrasts you configure: DEG tables, volcano / MA / heatmap, PCA, ORA and GSEA (MSigDB) | PyDESeq2, GSEApy |
 | `reference` | Filtered annotation, transcriptome, STAR and decoy-aware Salmon indices, built once | gffread, STAR, Salmon |
 | `trim` | Adapter- and quality-trimmed reads only | fastp |
 
@@ -41,6 +42,13 @@ where the two disagree, you can see it.
 - **DESeq2-ready.** Each branch writes a `SummarizedExperiment` (`.rds`) carrying the
   samplesheet's metadata as `colData` and gene names, biotypes and chromosomes as
   `rowData`. `DESeqDataSet(se, ~ condition)` is the next line of your analysis.
+- **Differential expression in Python, configured not coded.** List contrasts in the
+  config, per cell line or across them, paired or not, and get PyDESeq2 results with
+  ORA on the significant genes and GSEA on all of them. Validated against TaqMan qPCR
+  (fold changes r = 0.96). Every figure is drawn in one consistent style, ready for a
+  paper.
+  <br><img src="examples/seqc/de/volcano.png" width="400"> <img src="examples/seqc/de/gsea.png" width="380">
+  <br>*Brain vs UHRR from the human tutorial; more in [examples/](examples/README.md#differential-expression--w-de).*
 - **Strandedness is checked, not assumed.** Each branch infers it from its own evidence.
   A declared value that the data contradicts is flagged, or stops the run if you prefer.
 - **nf-core-compatible samplesheets**, with lanes and runs merged and any extra column

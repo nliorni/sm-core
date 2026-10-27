@@ -30,14 +30,15 @@ from smcore.launcher import Pipeline, main  # noqa: E402
 
 PIPELINE = Pipeline(
     name="rnaseq",
-    version="0.1.0",
-    description="paired-end RNA-seq: FASTQ to count matrices",
+    version="0.2.0",
+    description="paired-end RNA-seq: FASTQ to count matrices and differential expression",
     directory=HERE,
     workflows={
-        "all": "Both branches below, plus a comparison of their strandedness calls.",
+        "all": "Both branches below, plus a comparison of their strandedness calls (and `de`, when configured).",
         "star": "STAR branch: genome BAM, STAR gene count matrix, RNA-SeQC, MultiQC.",
         "salmon": "Salmon branch: Salmon quant, tximport gene/transcript matrices, MultiQC.",
         "reference": "Build the reference once: GTF filtering, transcriptome, STAR/Salmon indices.",
+        "de": "Differential expression (PyDESeq2) per configured contrast, with ORA and GSEA.",
         "trim": "fastp adapter/quality trimming only.",
     },
 )

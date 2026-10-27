@@ -20,6 +20,10 @@ from snakemake.exceptions import WorkflowError
 
 
 PIPELINE_DIR = Path(workflow.basedir)
+# The sm-core checkout itself: scripts running in a rule's conda environment
+# put it on sys.path to import shared code (smcore.plotting), which needs
+# nothing beyond matplotlib.
+SMCORE_ROOT = str(PIPELINE_DIR.parents[1])
 SCRIPTS = str(PIPELINE_DIR / "workflow" / "scripts")
 ENVS = PIPELINE_DIR / "workflow" / "envs"
 

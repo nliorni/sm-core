@@ -33,3 +33,24 @@ star:
 salmon:
   threads: 2
   mem_mb: 4000
+
+# Differential expression (-w de, and part of -w all here): RAP1 depletion
+# against wild type. Three samples only, so the point is to exercise the code
+# end to end, not the biology. MSigDB is human/mouse, so this uses a small
+# custom gene-set file instead.
+de:
+  matrices: [salmon, star]
+  threads: 2
+  mem_mb: 4000
+  gene_sets:
+    collections: []
+    custom:
+      yeast_test: tests/tutorial/yeast/gene_sets.gmt
+    min_size: 5
+  gsea:
+    permutations: 100
+  analyses:
+    - name: rap1
+      design: "~ condition"
+      contrasts:
+        - [condition, RAP1_IAA, WT]

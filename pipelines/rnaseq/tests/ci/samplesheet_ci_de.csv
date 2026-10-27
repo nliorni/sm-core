@@ -1,0 +1,9 @@
+sample,fastq_1,fastq_2,strandedness,condition,batch
+C1,fastq/S1_L1_R1.fastq.gz,fastq/S1_L1_R2.fastq.gz,auto,ctrl,b1
+C2,fastq/S1_L2_R1.fastq.gz,fastq/S1_L2_R2.fastq.gz,auto,ctrl,b1
+T1,fastq/S2_R1.fastq.gz,fastq/S2_R2.fastq.gz,auto,treat,b1
+T2,fastq/S3_R1.fastq.gz,fastq/S3_R2.fastq.gz,auto,treat,b1
+C3,fastq/S1_L1_R1.fastq.gz,fastq/S1_L1_R2.fastq.gz,auto,ctrl,b2
+C4,fastq/S1_L2_R1.fastq.gz,fastq/S1_L2_R2.fastq.gz,auto,ctrl,b2
+T3,fastq/S2_R1.fastq.gz,fastq/S2_R2.fastq.gz,auto,treat,b2
+T4,fastq/S3_R1.fastq.gz,fastq/S3_R2.fastq.gz,auto,treat,b2

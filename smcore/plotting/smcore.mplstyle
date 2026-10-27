@@ -1,0 +1,38 @@
+# sm-core figure style (see smcore/plotting/__init__.py).
+# In a notebook:  plt.style.use("<sm-core>/smcore/plotting/smcore.mplstyle")
+
+font.family: sans-serif
+font.sans-serif: Arial, Helvetica, Liberation Sans, DejaVu Sans, sans-serif
+font.size: 14
+
+axes.spines.top: False
+axes.spines.right: False
+axes.linewidth: 2
+axes.edgecolor: 272727
+axes.labelcolor: 272727
+axes.titleweight: bold
+axes.titlelocation: left
+axes.grid: False
+axes.prop_cycle: cycler('color', ['0F4D92', 'B64342', '8BCF8B', '42949E', '9A4D8E', 'E0B000', '3775BA', 'E9A6A1', '767676'])
+
+xtick.major.width: 2
+ytick.major.width: 2
+xtick.major.size: 5
+ytick.major.size: 5
+xtick.color: 272727
+ytick.color: 272727
+
+lines.linewidth: 2.5
+lines.markersize: 7
+scatter.edgecolors: none
+
+legend.frameon: False
+
+figure.facecolor: white
+figure.dpi: 100
+savefig.dpi: 300
+savefig.facecolor: white
+
+pdf.fonttype: 42
+ps.fonttype: 42
+svg.fonttype: none

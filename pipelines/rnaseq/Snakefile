@@ -12,7 +12,10 @@
 #              read counts; RNA-SeQC 2 QC on the BAM
 #   salmon     Salmon selective alignment (decoy-aware, bias-corrected) ->
 #              tximport gene and transcript matrices
-#   all        both, plus a table comparing their strandedness calls
+#   all        both, plus a table comparing their strandedness calls (and
+#              the differential expression below, when de.analyses is set)
+#   de         PyDESeq2 differential expression for the contrasts in
+#              de.analyses, with ORA and GSEA (builds the counts it needs)
 #
 #   reference  GTF filtering, transcriptome, STAR and Salmon indices (run once)
 #   trim       fastp adapter/quality trimming only
@@ -26,6 +29,7 @@ include: "workflow/rules/star.smk"
 include: "workflow/rules/salmon.smk"
 include: "workflow/rules/counts.smk"
 include: "workflow/rules/qc.smk"
+include: "workflow/rules/de.smk"
 
 
 def per_sample(*patterns):
@@ -64,7 +68,13 @@ rule all:
         star_outputs,
         salmon_outputs,
         QC_DIR + "strandedness.tsv",
+        lambda wildcards: de_outputs() if DE_UNITS else [],
     default_target: True
+
+
+rule de:
+    input:
+        de_outputs,
 
 
 def reference_outputs(wildcards):

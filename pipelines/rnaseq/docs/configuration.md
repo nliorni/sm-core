@@ -129,3 +129,79 @@ bundled ones. Names: `fastp`, `star`, `salmon`, `samtools`, `gffread`, `rnaseqc`
 | `rnaseqc` | `true` | Run RNA-SeQC 2 in the STAR branch. |
 | `rnaseqc_extra` | `""` | Extra RNA-SeQC arguments. |
 | `multiqc_extra` | `""` | Extra MultiQC arguments. |
+
+## `de` — differential expression (`-w de`)
+
+PyDESeq2 for every contrast you list, then over-representation (ORA) and gene set
+enrichment (GSEA). Nothing runs until `analyses` has an entry; once it has, `-w all`
+includes it. Methods and citations are in [methods.md](methods.md#differential-expression-and-enrichment),
+and the files it writes are in [outputs.md](outputs.md#differential-expression--w-de).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `matrices` | `[salmon]` | Count matrices to test: `salmon` (tximport length-scaled counts, rounded) and/or `star` (integer counts). |
+| `alpha` | `0.05` | Adjusted p-value cut-off: independent filtering, significant lists, ORA. |
+| `min_abs_log2fc` | `1.0` | Minimum \|log2 fold change\| for a gene to enter the significant lists (and so ORA). The Wald test itself is against 0. |
+| `min_count` | `10` | Pre-filter: keep a gene with at least this many reads in at least as many samples as the smallest group of the contrast's factor. |
+| `shrink` | `true` | Add shrunken log2 fold changes (PyDESeq2 `lfc_shrink`), used for the MA plot. |
+| `label_top` | `15` | Gene names written on the volcano plot. |
+| `heatmap_top` | `50` | Genes in the heatmap of each contrast. |
+| `plot_formats` | `[png, pdf]` | Every figure in each format; PDF and SVG keep text editable. |
+| `threads`, `mem_mb` | `4`, `8000` | Per DE job. |
+| `gene_sets.species` | `human` | `human` or `mouse`: which MSigDB edition (Hs, Mm) to download. |
+| `gene_sets.msigdb_version` | `"2026.1"` | MSigDB release, pinned so results do not change under you. |
+| `gene_sets.collections` | `[hallmark, reactome, go_bp]` | MSigDB collections, downloaded once into `<reference.dir>/gene_sets/`. `[]` for none. |
+| `gene_sets.custom` | `{}` | More collections: `name: /path/to/file.gmt` (gene symbols). |
+| `gene_sets.min_size`, `max_size` | `15`, `500` | Gene sets are tested only if this many of their genes were tested. |
+| `gsea.permutations` | `1000` | GSEA permutations; also the resolution of its p-values (q = 0 is reported as q < 1/permutations). |
+| `gsea.seed` | `42` | Fixed, so GSEA results are reproducible. |
+| `gsea.rank_by` | `stat` | Ranking for GSEA: the Wald statistic, or `shrunken_log2fc`. |
+| `gsea.fdr` | `0.25` | GSEA FDR for calling a set enriched (in the summary and the plot's shading). |
+
+### `de.analyses`
+
+Each entry is one model, or one model per value of `split_by`:
+
+| Key | Required | Meaning |
+|---|---|---|
+| `name` | yes | Folder name under `results/de/<matrix>/`. |
+| `design` | yes | PyDESeq2 design formula over samplesheet columns, e.g. `"~ condition"`. Every column is treated as categorical, including numeric-looking ones such as `replicate`. |
+| `contrasts` | yes | List of `[factor, test, reference]`: log2 fold change = test / reference. |
+| `split_by` | no | A samplesheet column: fit a separate model for each of its values. |
+| `exclude` | no | Sample names to leave out of this analysis (outliers, failed libraries). |
+
+**Splitting versus modelling together.** `split_by` is not a PyDESeq2 option: it is the
+pipeline running PyDESeq2 once per value of a column, each time on those samples only.
+Dispersions are then estimated within each group, which is the safer choice when the
+groups differ a lot in their variability, such as different cell lines or tissues. The
+alternative is one model over all samples with the column in the design, `"~ cell_line +
+condition"`: dispersions are shared, which gives more power when the groups behave
+alike, and the condition effect is the one common to all of them. Both can be configured
+side by side, as two analyses.
+
+**Paired designs.** When samples come in matched pairs, for example a treated and an
+untreated flask split from the same culture, put the pairing column in the design:
+`"~ replicate + condition"`. The contrast stays `[condition, treated, control]`.
+
+Example: two cell lines, three conditions, three replicates each.
+
+```yaml
+de:
+  matrices: [salmon, star]
+  analyses:
+    - name: per_line
+      split_by: cell_line
+      design: "~ condition"
+      contrasts:
+        - [condition, treated, control]
+        - [condition, withdrawn, treated]
+        - [condition, withdrawn, control]
+    - name: shared
+      design: "~ cell_line + condition"
+      contrasts:
+        - [condition, treated, control]
+```
+
+The configuration is checked at start-up against the samplesheet: unknown columns,
+levels missing from a split, duplicate contrasts, and designs that leave no replicates
+to estimate dispersions all stop the run with a message naming the analysis.

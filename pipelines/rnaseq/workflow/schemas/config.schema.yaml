@@ -168,4 +168,147 @@ properties:
         type: string
         default: ""
 
+  de:
+    type: object
+    default: {}
+    description: >-
+      Differential expression with PyDESeq2, then ORA and GSEA, for every
+      analysis x split x contrast below. Runs with -w de, and with -w all
+      when `analyses` is not empty.
+    properties:
+      matrices:
+        type: array
+        items: {type: string, enum: [salmon, star]}
+        minItems: 1
+        default: [salmon]
+        description: >-
+          Which count matrices to test. salmon uses tximport's length-scaled
+          counts (rounded), star STAR's integer counts.
+      alpha:
+        type: number
+        exclusiveMinimum: 0
+        maximum: 1
+        default: 0.05
+        description: Adjusted p-value cut-off, for independent filtering and the significant lists.
+      min_abs_log2fc:
+        type: number
+        minimum: 0
+        default: 1.0
+        description: Minimum |log2 fold change| for a gene to enter the significant lists (and ORA).
+      min_count:
+        type: integer
+        minimum: 0
+        default: 10
+        description: >-
+          Pre-filter: keep a gene with at least this many reads in at least as
+          many samples as the smallest group of the contrast's factor.
+      shrink:
+        type: boolean
+        default: true
+        description: Add apeGLM-style shrunken log2 fold changes (PyDESeq2 lfc_shrink), used for plots.
+      label_top:
+        type: integer
+        minimum: 0
+        default: 15
+        description: Gene names written on the volcano plot (most significant first).
+      heatmap_top:
+        type: integer
+        minimum: 2
+        default: 50
+      plot_formats:
+        type: array
+        items: {type: string, enum: [png, pdf, svg]}
+        minItems: 1
+        default: [png, pdf]
+      threads:
+        type: integer
+        minimum: 1
+        default: 4
+      mem_mb:
+        type: integer
+        default: 8000
+      gene_sets:
+        type: object
+        default: {}
+        properties:
+          species:
+            type: string
+            enum: [human, mouse]
+            default: human
+          msigdb_version:
+            type: string
+            default: "2026.1"
+          collections:
+            type: array
+            items: {type: string, enum: [hallmark, reactome, go_bp]}
+            default: [hallmark, reactome, go_bp]
+            description: MSigDB collections, downloaded once into <reference.dir>/gene_sets/.
+          custom:
+            type: object
+            additionalProperties: {type: string}
+            default: {}
+            description: Extra gene-set collections, name -> .gmt file of gene symbols.
+          min_size:
+            type: integer
+            minimum: 1
+            default: 15
+          max_size:
+            type: integer
+            minimum: 2
+            default: 500
+      gsea:
+        type: object
+        default: {}
+        properties:
+          permutations:
+            type: integer
+            minimum: 100
+            default: 1000
+          seed:
+            type: integer
+            default: 42
+          rank_by:
+            type: string
+            enum: [stat, shrunken_log2fc]
+            default: stat
+          fdr:
+            type: number
+            exclusiveMinimum: 0
+            maximum: 1
+            default: 0.25
+            description: GSEA FDR cut-off for calling a gene set enriched (Subramanian et al. 2005).
+      analyses:
+        type: array
+        default: []
+        items:
+          type: object
+          required: [name, design, contrasts]
+          additionalProperties: false
+          properties:
+            name:
+              type: string
+              pattern: "^[A-Za-z0-9_.-]+$"
+            design:
+              type: string
+              pattern: "^\\s*~"
+              description: PyDESeq2 design formula over samplesheet columns, e.g. "~ condition".
+            split_by:
+              type: [string, "null"]
+              description: >-
+                Samplesheet column: fit a separate model for each of its values
+                (e.g. one per cell line). Omit to model all samples together.
+            exclude:
+              type: array
+              items: {type: string}
+              description: Sample names left out of this analysis.
+            contrasts:
+              type: array
+              minItems: 1
+              items:
+                type: array
+                minItems: 3
+                maxItems: 3
+                items: {type: string}
+                description: "[factor, test level, reference level]: log2 fold change = test / reference."
+
 required: [output_dir, reference]

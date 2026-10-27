@@ -68,4 +68,21 @@ done
 grep -q "not_in_genome" tests/tutorial/yeast/output/logs/reference/prepare_annotation.log \
   || fail "GTF filtering did not report the off-genome record"
 
+# Differential expression (-w de, part of -w all here): every deliverable of
+# the one contrast, both matrices; spike-ins are not tested as genes.
+for branch in star salmon; do
+  d="${OUT}/de/${branch}/rap1/all/RAP1_IAA_vs_WT"
+  for f in deseq2_results.tsv significant_up.tsv significant_down.tsv volcano.png ma.png heatmap.png volcano.pdf \
+           enrichment/ora_up.tsv enrichment/ora_down.tsv enrichment/gsea.tsv \
+           enrichment/ora.png enrichment/gsea.png enrichment/gsea_curves.png \
+           ../pca.png ../sample_distances.png ../vst.tsv ../size_factors.tsv ../../../summary.tsv ../../../summary.png; do
+    [[ -e "${d}/${f}" ]] || fail "de ${branch}: missing ${f}"
+  done
+  head -1 "${d}/deseq2_results.tsv" | grep -q $'\tlog2FoldChange_shrunken\t' || fail "de ${branch}: no shrunken fold changes"
+  n=$(awk -F'\t' 'NR > 1 && $3 == "spikein"' "${d}/deseq2_results.tsv" | wc -l)
+  [[ "${n}" == 0 ]] || fail "de ${branch}: ${n} spike-ins were tested as genes"
+  n=$(awk -F'\t' 'NR > 1' "${d}/enrichment/gsea.tsv" | wc -l)
+  [[ "${n}" -ge 1 ]] || fail "de ${branch}: GSEA tested no gene set"
+done
+
 echo "yeast tutorial: all checks passed"

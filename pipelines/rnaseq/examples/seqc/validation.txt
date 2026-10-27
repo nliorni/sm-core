@@ -14,6 +14,11 @@ ERCC spike-ins detected (>= 10 normalised counts in A and B): 43 of 92
 TaqMan qPCR genes matched (detected in all 8 assays, unique symbol): 665
   log2(B/A) RNA-seq vs qPCR: Pearson r = 0.964, Spearman rho = 0.959
 
+Differential expression (PyDESeq2, B_vs_A): 634 TaqMan genes tested
+  log2FoldChange           vs qPCR: Pearson r = 0.962, Spearman rho = 0.965
+  log2FoldChange_shrunken  vs qPCR: Pearson r = 0.961, Spearman rho = 0.965
+  qPCR |log2 B/A| >= 1: 402 genes; called significant: 366 (91%); in the qPCR direction: 364 of 366
+
 === salmon ===
 size factors: SEQC_A_1 1.00, SEQC_A_2 0.85, SEQC_A_3 1.05, SEQC_B_1 1.05, SEQC_B_2 1.03, SEQC_B_3 1.10
 
@@ -28,6 +33,11 @@ ERCC spike-ins detected (>= 10 normalised counts in A and B): 44 of 92
 
 TaqMan qPCR genes matched (detected in all 8 assays, unique symbol): 665
   log2(B/A) RNA-seq vs qPCR: Pearson r = 0.968, Spearman rho = 0.967
+
+Differential expression (PyDESeq2, B_vs_A): 644 TaqMan genes tested
+  log2FoldChange           vs qPCR: Pearson r = 0.960, Spearman rho = 0.960
+  log2FoldChange_shrunken  vs qPCR: Pearson r = 0.956, Spearman rho = 0.959
+  qPCR |log2 B/A| >= 1: 407 genes; called significant: 363 (89%); in the qPCR direction: 360 of 363
 
 === STAR vs Salmon ===
 log2(B/A) over 14216 genes expressed in both: Pearson r = 0.995

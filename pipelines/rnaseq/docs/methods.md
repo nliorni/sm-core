@@ -16,6 +16,10 @@ exactly in `workflow/envs/*.yaml`; Snakemake builds each environment on first us
 | Count containers (`.rds`) | SummarizedExperiment | 1.40.0 | `bioconductor` |
 | BAM QC | RNA-SeQC | 2.4.2 | `rnaseqc` |
 | QC report | MultiQC | 1.35 | `multiqc` |
+| Differential expression | PyDESeq2 | 0.5.4 | `de` |
+| ORA and GSEA | GSEApy | 1.3.1 | `de` |
+| Gene sets | MSigDB (Hallmark, Reactome, GO:BP) | 2026.1 | downloaded once |
+| Plots | matplotlib, adjustText | 3.11.1, 1.4.0 | `de` |
 | Workflow | Snakemake | 9.16.0 | launcher (`environment.yml`) |
 
 ## Pipeline
@@ -105,6 +109,66 @@ thresholds nf-core/rnaseq uses. A declared strandedness the data contradicts is 
 `qc.fail_on_strandedness_mismatch: true`. With `-w all`, `results/qc/strandedness.tsv`
 compares the two branches' calls.
 
+## Differential expression and enrichment
+
+Run with `-w de` for the analyses in `de.analyses`
+([configuration.md](configuration.md#de--differential-expression--w-de)), separately for
+each count matrix in `de.matrices`.
+
+**Input.** The STAR matrix is used as is. For Salmon, tximport's length-scaled counts
+(`countsFromAbundance = "lengthScaledTPM"`), rounded to integers: the input tximport's
+authors recommend for count-based tools that cannot take the per-sample gene-length
+offsets, which PyDESeq2 cannot (Soneson et al. 2015). ERCC spike-ins are removed. Each
+model uses only its own samples: one `split_by` value, minus `exclude`.
+
+**Pre-filter.** A gene is kept with at least `min_count` (10) reads in at least as many
+samples as the smallest group of the contrast's factor, as in the DESeq2 vignette.
+
+**Model.** PyDESeq2, a Python reimplementation of DESeq2 (Muzellec et al. 2023; Love et
+al. 2014): median-of-ratios size factors, gene-wise dispersions shrunk towards a fitted
+trend, a negative binomial GLM with the configured design, Cook's distance outliers
+refitted, and a Wald test of the contrast. Every design column is categorical. The
+reference level is set to the contrast's reference, so the coefficient tested is test vs
+reference. P-values are adjusted with Benjamini–Hochberg after independent filtering at
+`alpha`. Shrunken fold changes come from PyDESeq2's `lfc_shrink` (an apeglm-style prior,
+Zhu et al. 2019) and are used for the MA plot and as an optional GSEA ranking; the
+significance calls use the unshrunken estimate. A gene is *up* or *down* when padj <
+`alpha` and |log2 fold change| ≥ `min_abs_log2fc`.
+
+PyDESeq2 and DESeq2 agree closely but not to the last digit. Report which one you used.
+
+**Overview.** For each model: variance-stabilising transformation (blind to the design),
+PCA of the 500 most variable genes (as DESeq2's `plotPCA`), and Euclidean distances
+between samples with average-linkage clustering.
+
+**ORA.** For the up and down lists separately, a hypergeometric test of each gene set
+(GSEApy `enrich`). The background is the genes that were tested (padj not NA), not the
+genome: genes that could never be called would otherwise make every set look enriched.
+Sets are kept when `min_size`–`max_size` of their genes were tested. Adjusted p-values
+(Benjamini–Hochberg) are within each collection.
+
+**GSEA.** Preranked GSEA (Subramanian et al. 2005; GSEApy `prerank`) of all tested genes,
+ranked by the Wald statistic (or the shrunken log2 fold change), with
+`gsea.permutations` gene-set permutations and a fixed seed; FDR within each collection.
+Where several gene IDs share a symbol, the one with the largest |statistic| is kept.
+
+**Gene sets.** MSigDB (Liberzon et al. 2015) release `msigdb_version`, human (Hs) or
+mouse (Mm) gene symbols: Hallmark, Reactome canonical pathways (Milacic et al. 2024)
+and GO Biological Process (Gene Ontology Consortium 2023). Downloaded once into
+`<reference.dir>/gene_sets/` and reused.
+
+**Validation.** On the SEQC tutorial (brain vs UHRR, 3 vs 3), the log2 fold changes agree
+with MAQC TaqMan qPCR at Pearson r = 0.96 in both matrices. Of the genes with a clear
+qPCR change (≥ 2-fold), 89–91% are called significant, and 99% of those calls go the
+qPCR's way. Genes up in brain are enriched for synaptic signalling and the neuronal
+system; genes up in UHRR, a pool of cancer cell lines, for E2F, MYC and G2/M targets.
+See [the tutorial](../tests/tutorial/seqc/README.md).
+
+**Figures.** Every plot uses the shared sm-core style (`smcore/plotting`): one colour
+meaning across the suite (red up, blue down, grey not significant), Arial-like type, PNG
+for viewing and PDF with editable text. The style is adapted from Chen Liu's
+[figures4papers](https://github.com/ChenLiu-1996/figures4papers).
+
 ## Citations
 
 If you use this pipeline, cite it through the repository's `CITATION.cff`, together with:
@@ -137,6 +201,29 @@ If you use this pipeline, cite it through the repository's `CITATION.cff`, toget
 - **MultiQC** — Ewels P, Magnusson M, Lundin S, Käller M. MultiQC: summarize analysis
   results for multiple tools and samples in a single report. *Bioinformatics*
   32:3047–3048 (2016). doi:10.1093/bioinformatics/btw354
+- **PyDESeq2** — Muzellec B, Teleńczuk M, Cabeli V, Andreux M. PyDESeq2: a python
+  package for bulk RNA-seq differential expression analysis. *Bioinformatics*
+  39:btad547 (2023). doi:10.1093/bioinformatics/btad547
+- **DESeq2** — Love MI, Huber W, Anders S. Moderated estimation of fold change and
+  dispersion for RNA-seq data with DESeq2. *Genome Biology* 15:550 (2014).
+  doi:10.1186/s13059-014-0550-8
+- **apeglm** — Zhu A, Ibrahim JG, Love MI. Heavy-tailed prior distributions for sequence
+  count data: removing the noise and preserving large differences. *Bioinformatics*
+  35:2084–2092 (2019). doi:10.1093/bioinformatics/bty895
+- **GSEApy** — Fang Z, Liu X, Peltz G. GSEApy: a comprehensive package for performing
+  gene set enrichment analysis in Python. *Bioinformatics* 39:btac757 (2023).
+  doi:10.1093/bioinformatics/btac757
+- **GSEA** — Subramanian A et al. Gene set enrichment analysis: a knowledge-based approach
+  for interpreting genome-wide expression profiles. *PNAS* 102:15545–15550 (2005).
+  doi:10.1073/pnas.0506580102
+- **MSigDB Hallmark** — Liberzon A et al. The Molecular Signatures Database hallmark gene
+  set collection. *Cell Systems* 1:417–425 (2015). doi:10.1016/j.cels.2015.12.004
+- **Reactome** — Milacic M et al. The Reactome Pathway Knowledgebase 2024. *Nucleic Acids
+  Research* 52:D672–D678 (2024). doi:10.1093/nar/gkad1025
+- **Gene Ontology** — Gene Ontology Consortium. The Gene Ontology knowledgebase in 2023.
+  *Genetics* 224:iyad031 (2023). doi:10.1093/genetics/iyad031
+- **Benjamini–Hochberg** — Benjamini Y, Hochberg Y. Controlling the false discovery rate.
+  *JRSS B* 57:289–300 (1995). doi:10.1111/j.2517-6161.1995.tb02031.x
 - **Snakemake** — Mölder F et al. Sustainable data analysis with Snakemake.
   *F1000Research* 10:33 (2021). doi:10.12688/f1000research.29032.2
 

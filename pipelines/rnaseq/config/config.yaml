@@ -211,3 +211,36 @@ qc:
   rnaseqc: true
   rnaseqc_extra: ""
   multiqc_extra: ""
+
+
+# ############################################################################
+# SECTION 8 - DIFFERENTIAL EXPRESSION (-w de)              >>> EDIT PER PROJECT <<<
+# ############################################################################
+# PyDESeq2 for each contrast below, then ORA (significant genes) and GSEA
+# (all genes, ranked) against MSigDB. Leave `analyses` empty to skip; with
+# analyses set, -w all runs it too. Factors are samplesheet columns.
+# docs/configuration.md#de has worked examples.
+
+de:
+  # salmon (tximport length-scaled counts), star (integer counts), or both.
+  matrices: [salmon]
+  alpha: 0.05             # adjusted p cut-off
+  min_abs_log2fc: 1.0     # for the significant lists (and ORA)
+  gene_sets:
+    species: human        # human | mouse  (MSigDB Hs / Mm)
+    msigdb_version: "2026.1"
+    collections: [hallmark, reactome, go_bp]
+    # custom: {my_sets: /path/to/sets.gmt}   # gene symbols
+  analyses: []
+  # Example: one model per cell line, and one shared across cell lines.
+  # analyses:
+  #   - name: per_line
+  #     split_by: cell_line          # a separate model for each cell line
+  #     design: "~ condition"        # "~ replicate + condition" when paired
+  #     contrasts:                   # [factor, test, reference]
+  #       - [condition, treated, control]
+  #       - [condition, withdrawn, treated]
+  #   - name: shared                 # all cell lines in one model
+  #     design: "~ cell_line + condition"
+  #     contrasts:
+  #       - [condition, treated, control]

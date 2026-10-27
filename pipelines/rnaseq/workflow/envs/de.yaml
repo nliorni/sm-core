@@ -1,0 +1,12 @@
+# sm-core/rnaseq: differential expression and enrichment (PyDESeq2, gseapy)
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pydeseq2=0.5.4
+  - gseapy=1.3.1
+  - pandas=2.3
+  - matplotlib-base=3.11.1
+  - adjusttext=1.4.0

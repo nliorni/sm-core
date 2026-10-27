@@ -2,6 +2,9 @@
 
 > ### 📣 News!
 >
+> - **27 October 2026**: **rnaseq 0.2.0** adds differential expression in Python: PyDESeq2
+>   for the contrasts in your config, with ORA and GSEA (MSigDB), validated against TaqMan
+>   qPCR. All sm-core figures now share one publication style.
 > - **22 October 2026**: the first sm-core pipeline is available:
 >   **[rnaseq](pipelines/rnaseq/README.md)**, paired-end RNA-seq from FASTQ to STAR and
 >   Salmon count matrices, validated on human SEQC/MAQC data. Please have a look!
@@ -19,7 +22,7 @@ checkout and one environment run all of them.
 
 | Pipeline | What it does | Version |
 |---|---|---|
-| [**rnaseq**](pipelines/rnaseq/README.md) | Paired-end RNA-seq: FASTQ → STAR and Salmon count matrices | 0.1.0 |
+| [**rnaseq**](pipelines/rnaseq/README.md) | Paired-end RNA-seq: FASTQ → STAR and Salmon count matrices → differential expression, ORA and GSEA | 0.2.0 |
 
 More pipelines will be added to this table as they are released; [CHANGELOG.md](CHANGELOG.md)
 records each one.

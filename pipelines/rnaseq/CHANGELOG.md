@@ -4,6 +4,31 @@ All notable changes to sm-core/rnaseq are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the pipeline uses
 [Semantic Versioning](https://semver.org/).
 
+## [0.2.0] - 2026-10-27
+
+Differential expression and enrichment.
+
+### Added
+- **`-w de`**: PyDESeq2 differential expression for every contrast in `de.analyses`, in
+  the STAR and/or Salmon matrix (`de.matrices`). An analysis is one model over all its
+  samples, or one per value of a samplesheet column (`split_by`, e.g. per cell line);
+  any design formula (`~ cell_line + condition`, paired `~ replicate + condition`);
+  samples can be excluded per analysis. Config errors (unknown columns, missing levels,
+  no residual degrees of freedom) stop the run at start-up.
+- Per contrast: full results with shrunken log2 fold changes and group means,
+  significant up/down lists, volcano, MA and top-gene heatmap. Per model: VST,
+  normalised counts, size factors, PCA and sample-distance plots. Per matrix: a summary
+  table and plot.
+- ORA of the up and down lists against the tested genes, and preranked GSEA of all
+  tested genes (GSEApy), against MSigDB Hallmark, Reactome and GO:BP (human or mouse,
+  pinned release, downloaded once next to the reference) and/or custom `.gmt` files.
+- All figures use the new shared sm-core style (`smcore/plotting`), as PNG and PDF.
+- `-w all` includes `de` when analyses are configured.
+- Tutorials: the SEQC config runs brain vs UHRR, and `validate.py` checks the fold
+  changes and calls against TaqMan qPCR (r = 0.96, 99% of calls in the right
+  direction). The yeast tutorial and CI run `de` end to end with a small custom gene-set
+  file; CI also dry-runs split and joint models and checks a broken DE config is refused.
+
 ## [0.1.0] - 2026-10-20
 
 First release: paired-end short-read RNA-seq, FASTQ to count matrices.
