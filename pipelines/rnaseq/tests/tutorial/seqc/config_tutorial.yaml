@@ -37,3 +37,14 @@ star:
 salmon:
   threads: 16
   mem_mb: 32000
+
+# Differential expression (-w de): brain (B) against UHRR (A), in both
+# matrices. validate.py checks the fold changes against TaqMan qPCR.
+de:
+  matrices: [salmon, star]
+  threads: 8
+  analyses:
+    - name: seqc
+      design: "~ condition"
+      contrasts:
+        - [condition, B, A]

@@ -92,6 +92,13 @@ These are the conventions gVAP established, applied suite-wide.
     changes. After editing one of those, delete the rule's outputs, *and* those of the
     target that collects them: Snakemake does not re-run a job just because an
     intermediate input was deleted.
+11. **Figures through `smcore.plotting`.** Every plot a pipeline draws calls
+    `apply_style()`, takes colours from it (`UP`, `DOWN`, `NS`, `CATEGORICAL`,
+    `DIVERGING`) and is written with `save()`, as PNG and PDF. The colour roles are the
+    same everywhere: red up, blue down, grey not significant, and blue then red for the
+    first two groups. Scripts import it after `sys.path.insert(0, snakemake.params.smcore)`,
+    with the rule passing `smcore=SMCORE_ROOT`; their environment needs only matplotlib.
+    QC that MultiQC already plots stays in MultiQC.
 
 ## What a pipeline ships
 

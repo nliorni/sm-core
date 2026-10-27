@@ -203,6 +203,29 @@ def main():
             print(f"\nTaqMan qPCR genes matched (detected in all 8 assays, unique symbol): {len(pairs)}")
             print(f"  log2(B/A) RNA-seq vs qPCR: Pearson r = {pearson(q, r):.3f}, Spearman rho = {spearman(q, r):.3f}")
 
+        # 3. Differential expression (-w de): PyDESeq2's fold changes and calls
+        #    against qPCR, for the genes whose qPCR change is clear (>= 2x).
+        de_path = Path(args.output_dir) / "results" / "de" / branch / "seqc" / "all" / "B_vs_A" / "deseq2_results.tsv"
+        if de_path.exists():
+            with open(de_path) as handle:
+                rows = list(csv.DictReader(handle, delimiter="\t"))
+            per_name = defaultdict(list)
+            for row in rows:
+                per_name[row["gene_name"]].append(row)
+            matched = {sym: rs[0] for sym, rs in per_name.items() if sym in taqman and len(rs) == 1}
+            print(f"\nDifferential expression (PyDESeq2, {de_path.parent.name}): {len(matched)} TaqMan genes tested")
+            for column in ("log2FoldChange", "log2FoldChange_shrunken"):
+                pairs = [(taqman[s], float(r[column])) for s, r in matched.items() if r.get(column) not in ("", None)]
+                if pairs:
+                    q, r = zip(*pairs)
+                    print(f"  {column:24} vs qPCR: Pearson r = {pearson(q, r):.3f}, Spearman rho = {spearman(q, r):.3f}")
+            clear = {s: r for s, r in matched.items() if abs(taqman[s]) >= 1}
+            called = {s: r for s, r in clear.items() if r["regulation"] in ("up", "down")}
+            agree = sum(1 for s, r in called.items() if (r["regulation"] == "up") == (taqman[s] > 0))
+            if clear:
+                print(f"  qPCR |log2 B/A| >= 1: {len(clear)} genes; called significant: {len(called)} "
+                      f"({100 * len(called) / len(clear):.0f}%); in the qPCR direction: {agree} of {len(called)}")
+
         fold[branch] = {g: math.log2((mean_b[g] + 0.5) / (mean_a[g] + 0.5))
                         for g in mean_a if min(mean_a[g], mean_b[g]) >= 10}
 

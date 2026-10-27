@@ -35,4 +35,28 @@ samples:
   S2: "tests/ci/fastq/S2"
 YAML
 
+# Differential expression: one analysis split by a samplesheet column, one
+# joint; and a broken one, which must be refused at start-up.
+cp "${CI_DIR}/config_ci.yaml" "${CI_DIR}/generated/config_ci_de.yaml"
+cat >> "${CI_DIR}/generated/config_ci_de.yaml" <<'YAML'
+
+de:
+  matrices: [salmon, star]
+  analyses:
+    - name: by_batch
+      design: "~ condition"
+      split_by: batch
+      contrasts:
+        - [condition, treat, ctrl]
+    - name: joint
+      design: "~ batch + condition"
+      contrasts:
+        - [condition, treat, ctrl]
+YAML
+sed -e 's|^samplesheet: .*|samplesheet: "tests/ci/samplesheet_ci_de.csv"|' \
+    "${CI_DIR}/generated/config_ci_de.yaml" > "${CI_DIR}/generated/config_ci_de.tmp"
+mv "${CI_DIR}/generated/config_ci_de.tmp" "${CI_DIR}/generated/config_ci_de.yaml"
+sed -e 's|\[condition, treat, ctrl\]|[condition, treated, ctrl]|' \
+    "${CI_DIR}/generated/config_ci_de.yaml" > "${CI_DIR}/generated/config_ci_de_bad.yaml"
+
 echo "CI placeholder inputs created under ${CI_DIR}"

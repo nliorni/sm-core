@@ -121,8 +121,31 @@ Other figures from the same run:
   QC failure: neurons are mitochondria-rich.
 - rRNA is below 0.05% everywhere (poly-A selected), and spike-ins are 1–1.6% of counts.
 
-`validate.py` uses no random sampling, so a rerun on the same reads with the same tool
-versions reproduces these figures exactly.
+### Differential expression (`-w de`)
+
+The tutorial config also defines one analysis, brain (B) against UHRR (A), run in both
+matrices with `-w de` (about 7 minutes). `validate.py` then checks PyDESeq2's results
+against TaqMan:
+
+```
+                                            STAR branch   Salmon branch
+genes called up / down (padj<0.05, 2x)    5,506 / 4,729   5,692 / 4,886
+PyDESeq2 log2FC vs TaqMan, Pearson r            0.962           0.960
+  shrunken log2FC vs TaqMan                     0.961           0.956
+TaqMan genes changed >= 2x: called significant   91%             89%
+  ... of those, in the qPCR direction        364 of 366      360 of 363
+```
+
+The enrichment results are what the two RNAs predict. Genes up in brain over-represent
+synaptic signalling, the neuronal system and axon development. Genes up in UHRR, a pool
+of cancer cell lines, over-represent E2F targets, MYC targets, the G2/M checkpoint and
+ribosome biogenesis: proliferation. GSEA agrees (Hallmark MYC targets V1 NES -3.4, E2F
+targets -3.4). The volcano plot names textbook markers on each side: GFAP, SNAP25 and
+CAMK2A for brain; ALB, APOB and AFP (UHRR includes a liver cancer line), immunoglobulin
+light chains (a B-cell line) and PMEL (a melanoma line) for UHRR.
+
+`validate.py` uses no random sampling, and GSEA uses a fixed seed, so a rerun on the
+same reads with the same tool versions reproduces these figures exactly.
 
 ## Cost
 

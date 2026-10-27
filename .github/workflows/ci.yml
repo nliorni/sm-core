@@ -76,7 +76,7 @@ jobs:
       - name: Python, R, shell and YAML syntax
         run: |
           python -c "import snakemake, colorama"   # the sm-core environment is the active one
-          python -m py_compile run.py workflow/scripts/*.py
+          python -m py_compile run.py workflow/scripts/*.py ../../smcore/plotting/__init__.py
           for f in workflow/scripts/*.R; do conda run -n rcheck Rscript -e "invisible(parse('$f'))"; done
           bash -n tests/ci/make_ci_inputs.sh tests/tutorial/*/*.sh resources/*.sh
           python -c "import glob, yaml; [yaml.safe_load(open(f)) for f in glob.glob('config/*.yaml') + glob.glob('workflow/**/*.yaml', recursive=True) + glob.glob('tests/**/*.yaml', recursive=True)]"
@@ -99,6 +99,9 @@ jobs:
             ./run.py -w all -c tests/ci/generated/config_ci_$variant.yaml -q 1 -n --no-singularity
             echo "::endgroup::"
           done
+          echo "::group::dry-run de (split and joint models)"
+          ./run.py -w de -c tests/ci/generated/config_ci_de.yaml -q 1 -n --no-singularity
+          echo "::endgroup::"
 
       - name: The two branches stay independent
         run: |
@@ -117,6 +120,8 @@ jobs:
         run: |
           ./run.py -w trim -c tests/ci/generated/config_ci_notrim.yaml -q 1 -n > /tmp/trim.log 2>&1 || true
           grep -q "needs trimming.enabled: true" /tmp/trim.log || { cat /tmp/trim.log; exit 1; }
+          ./run.py -w de -c tests/ci/generated/config_ci_de_bad.yaml -q 1 -n > /tmp/de.log 2>&1 || true
+          grep -q "no sample with condition = 'treated'" /tmp/de.log || { cat /tmp/de.log; exit 1; }
 
   rnaseq-tutorial:
     runs-on: ubuntu-24.04

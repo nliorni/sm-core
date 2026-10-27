@@ -22,6 +22,7 @@ into each other's directories.
 │   │       ├── gene_counts.rds
 │   │       ├── transcript_counts.rds
 │   │       └── samples.tsv
+│   ├── de/<matrix>/                    differential expression  (-w de; see below)
 │   ├── qc/
 │   │   ├── star/multiqc_report.html    one report per branch
 │   │   ├── salmon/multiqc_report.html
@@ -43,6 +44,7 @@ Trimmed reads and merged lanes are `temp()`: deleted once both branches have rea
 
 | Downstream use | Matrix |
 |---|---|
+| Differential expression, done by the pipeline | `-w de` with `de.analyses` set: PyDESeq2, ORA and GSEA for each contrast (`results/de/`) |
 | Differential expression with DESeq2 | `counts/salmon/gene_counts.rds` → `DESeqDataSet(se, ~ condition)` (uses the length offsets) |
 | Differential expression with edgeR / limma-voom from a plain table | `counts/salmon/gene_counts_length_scaled.tsv` |
 | Integer read counts, traceable to the BAM; tools that require them | `counts/star/gene_counts.tsv` (or `.rds`) |
@@ -80,6 +82,53 @@ Trimmed reads and merged lanes are `temp()`: deleted once both branches have rea
 | `salmon/<sample>/lib_format_counts.json` | Fragments per observed library orientation: the strandedness evidence. |
 | `salmon/<sample>/aux_info/meta_info.json` | Mapping rate, fragments processed and mapped, bias-model settings. |
 | `qc/salmon/multiqc_report.html` | fastp, Salmon, strandedness, count composition. |
+
+## Differential expression — `-w de`
+
+One folder per count matrix, analysis, split (`all` without `split_by`) and contrast:
+
+```
+results/de/<matrix>/
+├── summary.tsv, summary.{png,pdf}         DEGs up/down and GSEA sets per contrast, all analyses
+└── <analysis>/<split>/
+    ├── pca.{png,pdf}                      PCA of the model's samples (VST, 500 most variable genes)
+    ├── sample_distances.{png,pdf}         Euclidean distances between samples, clustered
+    ├── vst.tsv                            variance-stabilised expression (blind), genes x samples
+    ├── normalized_counts.tsv              counts / size factors
+    ├── size_factors.tsv
+    └── <test>_vs_<reference>/
+        ├── deseq2_results.tsv             every tested gene (see columns below)
+        ├── significant_up.tsv             padj < alpha and log2FC >= min_abs_log2fc
+        ├── significant_down.tsv           padj < alpha and log2FC <= -min_abs_log2fc
+        ├── volcano.{png,pdf}              log2FC vs -log10 padj; strongest genes named
+        ├── ma.{png,pdf}                   mean expression vs shrunken log2FC
+        ├── heatmap.{png,pdf}              top genes, z-scored VST, all samples of the model
+        └── enrichment/
+            ├── ora_up.tsv, ora_down.tsv   over-representation of each list against the tested genes
+            ├── ora.{png,pdf}
+            ├── gsea.tsv                   preranked GSEA on all tested genes
+            ├── gsea.{png,pdf}             strongest sets each way, NES with FDR
+            └── gsea_curves.{png,pdf}      running enrichment score, top 3 sets each way
+```
+
+`deseq2_results.tsv` columns: `gene_id`, `gene_name`, `gene_type`, `chrom`, `baseMean`,
+`log2FoldChange` (test / reference), `lfcSE`, `stat` (Wald), `pvalue`, `padj`
+(Benjamini–Hochberg, NA where independent filtering removed the gene),
+`log2FoldChange_shrunken`, `mean_normalized_<test>`, `mean_normalized_<reference>`, and
+`regulation` (`up` / `down` / `ns`). Genes that failed the `min_count` pre-filter are not
+listed. ERCC spike-ins are never tested.
+
+`ora_*.tsv`: `collection`, `term`, `overlap` (significant genes in the set), `set_size`
+(tested genes in the set), `pvalue`, `padj` (within the collection), `odds_ratio`,
+`genes`. `gsea.tsv`: `collection`, `term`, `size`, `es`, `nes`, `pvalue`, `fdr`, `fwer`,
+`leading_edge`. A positive NES means the set sits towards the genes higher in the test
+level.
+
+**Reading them.** Look at `pca` first: replicates should group, and a sample in the
+wrong place points to a swap or an outlier (`exclude` it, and say so). Then the volcano
+and the summary. In ORA and GSEA, pale bars did not pass the cut-off. A GSEA q-value
+of `q < 0.001` (with 1,000 permutations) means no permutation reached the observed
+score: it is the resolution of the test, not an exact value.
 
 ## QC: what to look at first
 
