@@ -109,6 +109,23 @@ def neg_log10(p: pd.Series) -> pd.Series:
     return -np.log10(p.clip(lower=floor / 10))
 
 
+def bh(p, n_tests: int) -> np.ndarray:
+    """Benjamini-Hochberg adjusted p-values for `p`, counting `n_tests` tests in all.
+
+    `n_tests` can exceed len(p): tests left out of `p` (e.g. gene sets with no
+    overlap, which gseapy enrich does not return) are counted with p = 1."""
+    p = np.asarray(p, dtype=float)
+    if p.size == 0:
+        return p
+    n_tests = max(n_tests, p.size)
+    order = np.argsort(p)
+    ranked = p[order] * n_tests / np.arange(1, p.size + 1)
+    adjusted = np.minimum.accumulate(ranked[::-1])[::-1].clip(max=1.0)
+    out = np.empty_like(adjusted)
+    out[order] = adjusted
+    return out
+
+
 def short_term(term: str, width: int = 48) -> str:
     """'HALLMARK_TNFA_SIGNALING_VIA_NFKB' -> 'TNFA signaling via NFKB'."""
     t = re.sub(r"^(HALLMARK|REACTOME|GOBP|GOCC|GOMF|KEGG|WP)_", "", term)

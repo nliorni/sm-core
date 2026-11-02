@@ -20,7 +20,7 @@ sm = snakemake  # noqa: F821
 sys.path.insert(0, sm.params.smcore)
 sys.path.insert(0, str(Path(sm.scriptdir)))
 
-from de_common import log_to, neg_log10, short_term  # noqa: E402
+from de_common import bh, log_to, neg_log10, short_term  # noqa: E402
 from smcore import plotting as sp  # noqa: E402
 
 log_to(sm.log[0])
@@ -81,7 +81,10 @@ for collection, path in zip(sm.params.collections, sm.input.gene_sets):
             "overlap": overlap[0],
             "set_size": overlap[1],
             "pvalue": r["P-value"],
-            "padj": r["Adjusted P-value"],
+            # gseapy adjusts only over the sets it returns (those with >= 1 gene of
+            # the list), so a short list gets far too small q-values. Adjust over
+            # every set tested instead.
+            "padj": bh(r["P-value"], len(sets)),
             "odds_ratio": r["Odds Ratio"],
             "genes": r["Genes"].str.replace(";", ","),
         }))

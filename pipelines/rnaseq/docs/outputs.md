@@ -119,7 +119,8 @@ results/de/<matrix>/
 listed. ERCC spike-ins are never tested.
 
 `ora_*.tsv`: `collection`, `term`, `overlap` (significant genes in the set), `set_size`
-(tested genes in the set), `pvalue`, `padj` (within the collection), `odds_ratio`,
+(tested genes in the set), `pvalue`, `padj` (Benjamini-Hochberg within the collection, over
+every set tested, including the sets with no significant gene), `odds_ratio`,
 `genes`. `gsea.tsv`: `collection`, `term`, `size`, `es`, `nes`, `pvalue`, `fdr`, `fwer`,
 `leading_edge`. A positive NES means the set sits towards the genes higher in the test
 level.
