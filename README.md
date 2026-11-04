@@ -23,6 +23,7 @@ checkout and one environment run all of them.
 | Pipeline | What it does | Version |
 |---|---|---|
 | [**rnaseq**](pipelines/rnaseq/README.md) | Paired-end RNA-seq: FASTQ → STAR and Salmon count matrices → differential expression, ORA and GSEA | 0.2.0 |
+| [**atacseq**](pipelines/atacseq/README.md) | Paired-end bulk ATAC-seq: FASTQ → filtered BAMs, peaks, consensus peak count matrix, differential accessibility, bigWigs, ENCODE QC, sample identity | 0.1.0 |
 
 More pipelines will be added to this table as they are released; [CHANGELOG.md](CHANGELOG.md)
 records each one.

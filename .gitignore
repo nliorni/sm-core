@@ -8,8 +8,7 @@ pipelines/*/tests/tutorial/*/fastq/
 pipelines/*/tests/tutorial/*/reference/
 pipelines/*/tests/tutorial/*/truth/
 pipelines/*/tests/tutorial/*/output/
-pipelines/*/tests/tutorial/*/download.log
-pipelines/*/tests/tutorial/*/run.log
+pipelines/*/tests/tutorial/*/*.log
 templates/pipeline/tests/tutorial/output/*
 !templates/pipeline/tests/tutorial/output/.gitkeep
 

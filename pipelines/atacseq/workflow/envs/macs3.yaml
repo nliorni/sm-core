@@ -1,0 +1,7 @@
+# sm-core/atacseq: macs3
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - macs3=3.1.0

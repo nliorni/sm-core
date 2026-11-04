@@ -1,0 +1,6 @@
+sample,fastq_1,fastq_2,condition,replicate
+C1,fastq/C1_L1_R1.fastq.gz,fastq/C1_L1_R2.fastq.gz,ctrl,1
+C1,fastq/C1_L2_R1.fastq.gz,fastq/C1_L2_R2.fastq.gz,ctrl,1
+C2,fastq/C2_R1.fastq.gz,fastq/C2_R2.fastq.gz,ctrl,2
+T1,fastq/T1_R1.fastq.gz,fastq/T1_R2.fastq.gz,treat,1
+T2,fastq/T2_R1.fastq.gz,fastq/T2_R2.fastq.gz,treat,2

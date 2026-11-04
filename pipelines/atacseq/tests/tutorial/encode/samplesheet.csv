@@ -1,0 +1,5 @@
+sample,fastq_1,fastq_2,cell_line,replicate
+GM12878_1,fastq/GM12878_1_R1.fastq.gz,fastq/GM12878_1_R2.fastq.gz,GM12878,1
+GM12878_2,fastq/GM12878_2_R1.fastq.gz,fastq/GM12878_2_R2.fastq.gz,GM12878,2
+K562_1,fastq/K562_1_R1.fastq.gz,fastq/K562_1_R2.fastq.gz,K562,1
+K562_2,fastq/K562_2_R1.fastq.gz,fastq/K562_2_R2.fastq.gz,K562,2

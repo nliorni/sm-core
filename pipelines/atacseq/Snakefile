@@ -1,0 +1,85 @@
+###############################################################################
+# sm-core/atacseq
+#
+# Paired-end bulk ATAC-seq, from FASTQ to peaks and a consensus count matrix.
+# This file defines the workflow targets (the `-w` values accepted by
+# ./run.py); the rules behind them live in workflow/rules/ and, for the steps
+# every short-read pipeline shares (lane merging, fastp), smcore/rules/.
+#
+#   all        fastp -> bowtie2 -> filtered, deduplicated, nuclear BAMs ->
+#              MACS3 peaks per sample -> consensus peaks -> peak count
+#              matrix; bigWigs; ENCODE QC; sample identity (when configured);
+#              MultiQC; and the differential accessibility below, when
+#              da.analyses is set
+#   da         PyDESeq2 differential accessibility of the consensus peaks for
+#              the contrasts in da.analyses (builds the counts it needs)
+#   reference  genome, bowtie2 index, TSS / gene annotation, blacklist (once)
+#   trim       fastp adapter/quality trimming only
+###############################################################################
+
+include: "../../smcore/common.smk"
+include: "workflow/rules/common.smk"
+include: "../../smcore/rules/reads.smk"
+include: "workflow/rules/reference.smk"
+include: "workflow/rules/align.smk"
+include: "workflow/rules/peaks.smk"
+include: "workflow/rules/qc.smk"
+include: "../../smcore/rules/de_design.smk"
+include: "workflow/rules/da.smk"
+
+
+def all_outputs(wildcards):
+    out = per_sample(BAM_DIR + "{sample}.bam")
+    out += per_sample(PEAKS_DIR + "{sample}/{sample}_peaks.narrowPeak")
+    out += per_sample(BIGWIG_DIR + "{sample}.bw")
+    out += expand(BIGWIG_DIR + "groups/{group}.bw", group=BIGWIG_GROUPS)
+    out += [
+        CONSENSUS_DIR + "consensus_peaks.annotated.tsv",
+        COUNTS_DIR + "peak_counts.tsv",
+        COUNTS_DIR + "samples.tsv",
+        QC_DIR + "atac_qc_summary.tsv",
+        QC_DIR + "multiqc_report.html",
+    ]
+    if IDENTITY:
+        out += [IDENTITY_DIR + "somalier.html", IDENTITY_DIR + "identity_matches.tsv"]
+    if DA_UNITS:
+        out += da_outputs()
+    return out
+
+
+rule all:
+    input:
+        all_outputs,
+    default_target: True
+
+
+rule da:
+    input:
+        da_outputs,
+
+
+rule reference:
+    input:
+        GENOME_FA,
+        CHROM_SIZES,
+        NUCLEAR_BED,
+        GENOME_SIZE,
+        GENES_TSV,
+        TSS_BED,
+        BLACKLIST_BED,
+        bowtie2_index_files(),
+
+
+def trim_outputs(wildcards):
+    if not trimming_enabled():
+        raise WorkflowError("The `trim` target needs trimming.enabled: true.")
+    return per_sample(
+        RESULTS + "fastp/{sample}_R1.trimmed.fastq.gz",
+        RESULTS + "fastp/{sample}_R2.trimmed.fastq.gz",
+        RESULTS + "fastp/{sample}.fastp.json",
+    )
+
+
+rule trim:
+    input:
+        trim_outputs,

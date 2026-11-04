@@ -1,0 +1,29 @@
+# ============================================================================
+# sm-core/atacseq: CI config
+# ============================================================================
+# Points at the empty placeholders created by tests/ci/make_ci_inputs.sh.
+# Used only for the dry-run checks in .github/workflows/ci.yml, which resolve
+# the full DAG of every target without reading a byte of data. Not a usable
+# analysis config.
+# ============================================================================
+
+output_dir: "tests/ci/output/"
+samplesheet: "tests/ci/samplesheet_ci.csv"
+
+reference:
+  genome: "tests/ci/refs/genome.fa.gz"
+  gtf: "tests/ci/refs/genes.gtf.gz"
+  blacklist: "tests/ci/refs/blacklist.bed"
+
+peaks:
+  consensus_group_by: [condition]
+
+bigwig:
+  group_by: [condition]
+
+da:
+  analyses:
+    - name: treatment
+      design: "~ condition"
+      contrasts:
+        - [condition, treat, ctrl]

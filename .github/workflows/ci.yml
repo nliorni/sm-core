@@ -6,6 +6,7 @@
 #                     placeholder inputs; the two branches stay independent
 #   rnaseq-tutorial   the yeast tutorial for real: every tool, every conda
 #                     environment, both count matrices -- ~15 minutes
+#   atacseq-checks    as rnaseq-checks, for atacseq
 #
 # A new pipeline adds its own <name>-checks job (copy rnaseq-checks).
 name: ci
@@ -36,7 +37,7 @@ jobs:
         run: python -m py_compile run.py bootstrap.py smcore/*.py templates/pipeline/run.py
 
       - name: Suite dispatcher
-        run: ./run.py --list | grep -q rnaseq
+        run: ./run.py --list | grep -q rnaseq && ./run.py --list | grep -q atacseq
 
       - name: Template pipeline runs end to end
         working-directory: templates/pipeline
@@ -76,7 +77,7 @@ jobs:
       - name: Python, R, shell and YAML syntax
         run: |
           python -c "import snakemake, colorama"   # the sm-core environment is the active one
-          python -m py_compile run.py workflow/scripts/*.py ../../smcore/plotting/__init__.py
+          python -m py_compile run.py workflow/scripts/*.py ../../smcore/plotting/__init__.py ../../smcore/de.py
           for f in workflow/scripts/*.R; do conda run -n rcheck Rscript -e "invisible(parse('$f'))"; done
           bash -n tests/ci/make_ci_inputs.sh tests/tutorial/*/*.sh resources/*.sh
           python -c "import glob, yaml; [yaml.safe_load(open(f)) for f in glob.glob('config/*.yaml') + glob.glob('workflow/**/*.yaml', recursive=True) + glob.glob('tests/**/*.yaml', recursive=True)]"
@@ -150,3 +151,76 @@ jobs:
 
       - name: Check the deliverables
         run: tests/tutorial/yeast/check_outputs.sh
+
+  atacseq-checks:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        # A job's defaults.run replaces the workflow's, so the login shell
+        # that activates the conda environment has to be restated here.
+        shell: bash -el {0}
+        working-directory: pipelines/atacseq
+    steps:
+      - uses: actions/checkout@v5
+      - uses: conda-incubator/setup-miniconda@v4
+        with:
+          environment-file: environment.yml
+          activate-environment: sm-core
+          miniforge-version: latest
+          channel-priority: strict
+          conda-remove-defaults: "true"   # with nodefaults in environment.yml
+
+      - name: Python, shell and YAML syntax
+        run: |
+          python -m py_compile run.py workflow/scripts/*.py ../../smcore/plotting/__init__.py ../../smcore/de.py
+          bash -n tests/ci/make_ci_inputs.sh tests/tutorial/*/*.sh resources/*.sh
+          python -c "import glob, yaml; [yaml.safe_load(open(f)) for f in glob.glob('config/*.yaml') + glob.glob('workflow/**/*.yaml', recursive=True) + glob.glob('tests/**/*.yaml', recursive=True)]"
+
+      - name: Workflow targets
+        run: ./run.py --list-workflows
+
+      - name: Dry-run every target
+        run: |
+          ./tests/ci/make_ci_inputs.sh
+          for target in all reference trim da; do
+            echo "::group::dry-run $target"
+            ./run.py -w "$target" -c tests/ci/config_ci.yaml -q 1 -n --no-singularity
+            echo "::endgroup::"
+          done
+          for variant in identity minimal; do
+            echo "::group::dry-run all ($variant)"
+            ./run.py -w all -c tests/ci/generated/config_ci_$variant.yaml -q 1 -n --no-singularity
+            echo "::endgroup::"
+          done
+
+      - name: The plan has what it promises
+        run: |
+          # Snakemake logs to stderr. Check each plan is there before checking
+          # what it leaves out, so an empty log cannot pass.
+          ./run.py -w all -c tests/ci/config_ci.yaml -q 1 -n --no-singularity > /tmp/all.log 2>&1
+          ./run.py -w all -c tests/ci/generated/config_ci_identity.yaml -q 1 -n --no-singularity > /tmp/identity.log 2>&1
+          ./run.py -w all -c tests/ci/generated/config_ci_minimal.yaml -q 1 -n --no-singularity > /tmp/minimal.log 2>&1
+          grep -q '^rule merge_lanes' /tmp/all.log || { echo "C1 has two lanes and should be merged" >&2; exit 1; }
+          grep -q '^rule bigwig_group' /tmp/all.log || { echo "bigwig.group_by should average per group" >&2; exit 1; }
+          grep -q '^rule somalier_relate' /tmp/all.log && { echo "identity check without somalier_sites" >&2; exit 1; }
+          grep -q '^rule somalier_extract_other' /tmp/identity.log || { cat /tmp/identity.log; exit 1; }
+          grep -q '^rule identity_matches' /tmp/identity.log || { echo "identity check without the match table" >&2; exit 1; }
+          grep -q '^rule macs3' /tmp/minimal.log || { cat /tmp/minimal.log; exit 1; }
+          grep -q '^rule bigwig_group' /tmp/minimal.log && { echo "no group_by, no group bigWigs" >&2; exit 1; }
+          grep -q '^rule da_contrast' /tmp/all.log || { echo "da.analyses set: -w all should test them" >&2; exit 1; }
+          grep -q '^rule da_contrast' /tmp/minimal.log && { echo "no da.analyses, no differential accessibility" >&2; exit 1; }
+          echo "as promised"
+
+      - name: Configuration errors are caught at start-up
+        run: |
+          ./run.py -w all -c tests/ci/generated/config_ci_bad.yaml -q 1 -n > /tmp/bad.log 2>&1 || true
+          grep -q "'cell_line' is not a samplesheet column" /tmp/bad.log || { cat /tmp/bad.log; exit 1; }
+          ./run.py -w trim -c tests/ci/generated/config_ci_minimal.yaml -q 1 -n > /tmp/trim.log 2>&1 || true
+          grep -q "needs trimming.enabled: true" /tmp/trim.log || { cat /tmp/trim.log; exit 1; }
+          ./run.py -w all -c tests/ci/generated/config_ci_bad_da.yaml -q 1 -n > /tmp/bad_da.log 2>&1 || true
+          grep -q "no sample with condition = 'treated'" /tmp/bad_da.log || { cat /tmp/bad_da.log; exit 1; }
+          ./run.py -w da -c tests/ci/generated/config_ci_minimal.yaml -q 1 -n > /tmp/no_da.log 2>&1 || true
+          grep -q "needs at least one entry in da.analyses" /tmp/no_da.log || { cat /tmp/no_da.log; exit 1; }
+          ./run.py -w all -c tests/ci/generated/config_ci_unreplicated.yaml -q 1 -n --no-singularity > /tmp/unrep.log 2>&1
+          grep -q "keep peaks called in a single sample" /tmp/unrep.log || { cat /tmp/unrep.log; exit 1; }
+          if grep -q "keep peaks called in a single sample" /tmp/all.log; then echo "replicated groups should not warn" >&2; exit 1; fi

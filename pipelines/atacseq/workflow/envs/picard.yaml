@@ -1,0 +1,7 @@
+# sm-core/atacseq: picard
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - picard=3.5.0

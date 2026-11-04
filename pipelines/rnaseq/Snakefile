@@ -24,11 +24,12 @@
 include: "../../smcore/common.smk"
 include: "workflow/rules/common.smk"
 include: "workflow/rules/reference.smk"
-include: "workflow/rules/preprocess.smk"
+include: "../../smcore/rules/reads.smk"
 include: "workflow/rules/star.smk"
 include: "workflow/rules/salmon.smk"
 include: "workflow/rules/counts.smk"
 include: "workflow/rules/qc.smk"
+include: "../../smcore/rules/de_design.smk"
 include: "workflow/rules/de.smk"
 
 

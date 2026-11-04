@@ -1,0 +1,7 @@
+# sm-core/atacseq: samtools
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - samtools=1.23.1

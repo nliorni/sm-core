@@ -1,0 +1,8 @@
+# sm-core/atacseq: somalier
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - somalier=0.3.6
+  - samtools=1.23.1

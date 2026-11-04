@@ -1,0 +1,11 @@
+# sm-core/atacseq: atacqc (pysam QC, consensus peaks, annotation, summary plots)
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pysam=0.24.1
+  - numpy=2.3
+  - pandas=2.3
+  - matplotlib-base=3.11.1

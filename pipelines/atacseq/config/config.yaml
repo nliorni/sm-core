@@ -1,0 +1,255 @@
+# ============================================================================
+# sm-core/atacseq: project configuration (human, GRCh38 + GENCODE)
+# ============================================================================
+#
+# One YAML file per project. Copy this template, rename it, and edit the
+# blocks marked  >>> EDIT PER PROJECT <<<  in SECTION 1 plus the paths in
+# SECTION 2. Everything else is a default that usually does not need to
+# change; workflow/schemas/config.schema.yaml holds every key's default and
+# type, and the run stops at start-up if a value is wrong.
+#
+#   cp config/config.yaml config_my_project.yaml
+#
+# Dry-run before launching:
+#   ./run.py -w all -c config_my_project.yaml -q 32 -n
+#
+# Workflow targets (./run.py --list-workflows):
+#   all         BAMs, peaks, consensus peak counts, bigWigs, QC, MultiQC
+#   reference   build the reference once (bowtie2 index, TSSs, blacklist)
+#   trim        fastp trimming only
+#
+# Assumptions
+#   - Paired-end short reads (Illumina/MGI, >= 2x36 bp), Tn5-based ATAC-seq
+#     (standard, Omni-ATAC, Fast-ATAC).
+#   - Genome and annotation from the same source and assembly (SECTION 2).
+#   - Relative paths are relative to the pipeline directory
+#     (pipelines/atacseq/); absolute paths are recommended for real projects.
+#
+# See docs/configuration.md for the full key-by-key reference and
+# docs/resources.md for where to download every reference file.
+# ============================================================================
+
+
+# ############################################################################
+# SECTION 1 - PROJECT & SAMPLES                         >>> EDIT PER PROJECT <<<
+# ############################################################################
+
+# Main output directory. results/, logs/ and benchmarks/ are created inside
+# it, and reference/ too unless reference.dir points elsewhere.
+output_dir: "/path/to/output/MY_PROJECT/"
+
+# OPTIONAL - email for pipeline-completion notifications via `mail`.
+# notify_email: "you@institution.edu"
+
+# Samples: declare them with EITHER a samplesheet (recommended) OR `samples:`.
+#
+# (a) samplesheet -- nf-core-style CSV (or .tsv):
+#
+#       sample,fastq_1,fastq_2,condition,replicate
+#       CTRL_1,/data/CTRL_1_L001_R1.fastq.gz,/data/CTRL_1_L001_R2.fastq.gz,control,1
+#       CTRL_1,/data/CTRL_1_L002_R1.fastq.gz,/data/CTRL_1_L002_R2.fastq.gz,control,1
+#       TREAT_1,/data/TREAT_1_R1.fastq.gz,/data/TREAT_1_R2.fastq.gz,treated,1
+#
+#     Rows sharing a `sample` are lanes/runs of one library and are merged.
+#     Every further column (condition, replicate, ...) is sample metadata:
+#     it defines the replicate groups below and is written next to the count
+#     matrix (results/counts/samples.tsv). Relative FASTQ paths are read
+#     relative to the samplesheet file.
+samplesheet: "/path/to/samplesheet.csv"
+
+# (b) samples -- the sm-core family convention, FASTQ prefixes:
+#       {prefix}_{unit[0]}.{extension}  and  {prefix}_{unit[1]}.{extension}
+#     A list of prefixes merges lanes/runs. No metadata columns this way.
+# unit: ["R1", "R2"]
+# extension: "fastq.gz"
+# samples:
+#   CTRL_1: ["/data/CTRL_1_L001", "/data/CTRL_1_L002"]
+#   TREAT_1: "/data/TREAT_1"
+
+
+# ############################################################################
+# SECTION 2 - REFERENCE
+# ############################################################################
+#
+# The same genome + GTF as sm-core/rnaseq: GENCODE's primary-assembly genome
+# and matching GTF (pipelines/rnaseq/resources/get_reference.sh fetches
+# both). The blacklist and the somalier sites come from
+# resources/get_atac_resources.sh. docs/resources.md has the details.
+
+reference:
+  # Plain or gzipped.
+  genome: "/path/to/reference/GRCh38.primary_assembly.genome.fa.gz"
+  gtf: "/path/to/reference/gencode.v50.primary_assembly.annotation.gtf.gz"
+
+  # ENCODE blacklist (Amemiya et al. 2019): regions with anomalous signal in
+  # every experiment. Peaks overlapping it are dropped and it is left out of
+  # the bigWigs. Its sequence names must be the genome's (chr1 for GENCODE).
+  blacklist: "/path/to/reference/hg38-blacklist.v2.bed.gz"
+
+  # Where the derived reference (genome copy, bowtie2 index, annotation) is
+  # built. Default <output_dir>/reference/. Point several projects at one
+  # shared directory to build the index once -- but never run two projects
+  # that would BUILD it at the same time.
+  dir: null
+
+  # OPTIONAL - a bowtie2 index prefix built elsewhere from exactly this genome.
+  bowtie2_index: null
+
+  # Mitochondrial sequence (auto: chrM, MT, chrMT or M, whichever exists).
+  mito_name: auto
+
+  # MACS3 -g. Default: the genome's non-N length (GRCh38: ~2.9e9; MACS3's
+  # built-in "hs" is 2.7e9). Either works; set an integer to fix it.
+  effective_genome_size: null
+
+  # Index building: bowtie2-build on GRCh38 takes ~1-2 h on 16 threads.
+  threads: 16
+  bowtie2_index_mem_mb: 32000
+
+
+# ############################################################################
+# SECTION 3 - SOFTWARE ENVIRONMENTS
+# ############################################################################
+#
+# By default every rule builds its own conda environment from
+# workflow/envs/<name>.yaml (exact versions pinned) on first use. Sites with
+# shared, pre-built environments can point the pipeline at them instead.
+#
+# Environment names: fastp, bowtie2, samtools, picard, macs3, subread,
+# deeptools, somalier, atacqc, multiqc, python.
+#
+# conda_envs:
+#   bowtie2: "/shared/condaEnvs/bowtie2-2.5.5"
+
+
+# ############################################################################
+# SECTION 4 - TRIMMING (fastp)
+# ############################################################################
+#
+# Adapters are found from the overlap of the two mates, so the Nextera
+# adapter of ATAC libraries needs no configuration.
+
+trimming:
+  enabled: true
+  min_length: 20
+  extra: ""
+  threads: 8
+  mem_mb: 4000
+
+
+# ############################################################################
+# SECTION 5 - ALIGNMENT & FILTERING (bowtie2, Picard)
+# ############################################################################
+#
+# bowtie2 --very-sensitive -X <max_fragment>; kept: properly paired, primary,
+# MAPQ >= min_mapq; duplicates marked by Picard and (by default) removed;
+# mitochondrial pairs removed. The ENCODE ATAC-seq filters.
+
+align:
+  threads: 16
+  mem_mb: 16000
+  max_fragment: 2000
+  min_mapq: 30
+  remove_duplicates: true
+  extra: ""
+  markdup_mem_mb: 16000
+
+
+# ############################################################################
+# SECTION 6 - PEAKS (MACS3) & CONSENSUS                 >>> EDIT PER PROJECT <<<
+# ############################################################################
+
+peaks:
+  # MACS3 callpeak -f BAMPE (whole fragments), per sample. The default is
+  # the ENCODE ATAC-seq pipeline's: a permissive per-sample p-value cut-off,
+  # with the replicate consensus below (min_replicates) as the
+  # reproducibility filter. A group with a single sample gets no such
+  # filter; for such designs, cutoff: qvalue with threshold 0.05 (MACS3's
+  # default) gives a stricter per-sample set.
+  cutoff: pvalue      # pvalue | qvalue
+  threshold: 0.01
+  extra: ""
+  mem_mb: 16000
+
+  # Replicate groups for the consensus peak set: samplesheet columns whose
+  # combined values make a group (e.g. [cell_line, condition]). A consensus
+  # peak must be called in >= min_replicates samples of at least one group,
+  # so a region open in a single condition is kept but a one-replicate peak
+  # is not. [] = all samples one group.
+  consensus_group_by: [condition]
+  min_replicates: 2
+
+
+# ############################################################################
+# SECTION 7 - SIGNAL TRACKS (deepTools)
+# ############################################################################
+#
+# One CPM-normalised bigWig per sample, plus one averaged per group of
+# group_by (e.g. [condition]) for the genome browser. [] = per sample only.
+
+bigwig:
+  bin_size: 10
+  group_by: [condition]
+  threads: 8
+  mem_mb: 8000
+
+
+# ############################################################################
+# SECTION 8 - PEAK ANNOTATION & QC
+# ############################################################################
+
+annotation:
+  # Peaks are annotated to the nearest TSS of these gene types; "promoter"
+  # = within -promoter_upstream / +promoter_downstream bp of it.
+  gene_types: [protein_coding, lncRNA]
+  promoter_upstream: 1000
+  promoter_downstream: 1000
+
+qc:
+  threads: 2
+  mem_mb: 12000
+
+  # OPTIONAL - sample identity check (somalier): genotypes every sample at
+  # ~17,000 common SNPs, reports relatedness between every pair and the
+  # inferred sex. Catches swapped or mislabelled samples. Needs the sites
+  # file for the genome build (resources/get_atac_resources.sh).
+  somalier_sites: null
+
+  # OPTIONAL - BAMs of other assays of the same cells (e.g. rnaseq's STAR
+  # BAMs, same genome assembly), checked against the ATAC samples. Their
+  # samples appear as <identity_prefix><read-group SM>; a pair equal up to
+  # the prefix is expected to be the same cells and flagged if not.
+  identity_bams: []
+  identity_prefix: "ext_"
+  # e.g. "--min-ab 0.2" when RNA-seq BAMs are included (somalier's advice).
+  somalier_extra: ""
+
+  multiqc_extra: ""
+
+
+# ############################################################################
+# SECTION 9 - DIFFERENTIAL ACCESSIBILITY (PyDESeq2)      >>> EDIT PER PROJECT <<<
+# ############################################################################
+# The consensus peak counts, tested per contrast: ./run.py -w da (and -w all
+# once `analyses` is set). Same analyses format as rnaseq's `de` section, so
+# the two assays of a project can use the same designs.
+
+da:
+  # median_of_ratios (DESeq2, over peaks: most peaks assumed unchanged) or
+  # library_size (total fragments per BAM: robust to a global opening or
+  # closing of chromatin). Both are computed and compared in every run.
+  normalization: median_of_ratios
+  alpha: 0.05             # adjusted p cut-off
+  min_abs_log2fc: 1.0     # for the significant lists
+  analyses: []
+  # Example: one model per cell line, and one shared across cell lines.
+  # analyses:
+  #   - name: per_line
+  #     split_by: cell_line          # a separate model for each cell line
+  #     design: "~ condition"        # "~ replicate + condition" when paired
+  #     contrasts:                   # [factor, test, reference]
+  #       - [condition, treated, control]
+  #   - name: shared                 # all cell lines in one model
+  #     design: "~ cell_line + condition"
+  #     contrasts:
+  #       - [condition, treated, control]

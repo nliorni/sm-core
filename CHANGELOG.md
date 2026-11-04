@@ -6,12 +6,19 @@ its own `pipelines/<name>/CHANGELOG.md`.
 ## [Unreleased]
 
 ### Added
+- `smcore/rules/reads.smk`: lane merging and fastp, moved out of rnaseq so that atacseq
+  uses the same rules. rnaseq's outputs and its rerun behaviour are unchanged.
 - `smcore/plotting`: one figure style for every pipeline of the suite (semantic colours:
   red up, blue down, grey not significant; Arial-like type found on the system; PNG and
   PDF with editable text), adapted from Chen Liu's figures4papers. Also a matplotlib
   style file, `smcore/plotting/smcore.mplstyle`, for notebooks.
 - `SMCORE_ROOT` in `smcore/common.smk`: lets scripts running in a rule's conda
   environment import shared sm-core code.
+- `smcore/de.py` and `smcore/rules/de_design.smk`: the differential-analysis code of
+  rnaseq's `-w de` (PyDESeq2 models, design checks, figures), moved out so that atacseq's
+  `-w da` uses the same. `fit()` and `vst()` also take fixed size factors, which PyDESeq2
+  0.5 has no option for; given PyDESeq2's own factors, the results are identical. rnaseq's
+  DE tables are byte-identical before and after the move (yeast and seqc tutorials).
 
 ### Fixed
 - The launcher makes sure Snakemake can run `conda`. `conda activate` provides a shell

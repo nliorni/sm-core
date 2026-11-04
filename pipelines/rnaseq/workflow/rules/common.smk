@@ -42,10 +42,6 @@ BENCH = outputDir + "benchmarks/"
 BRANCHES = ("star", "salmon")
 
 
-def trimming_enabled():
-    return config["trimming"]["enabled"]
-
-
 ## ============================================================================
 ## Reference locations
 ##
@@ -82,33 +78,6 @@ def salmon_index():
     """Same caveat as star_index(): Salmon's transcript IDs must be those of
     the configured GTF, or tximport cannot map them to genes."""
     return config["reference"]["salmon_index"] or (REF_DIR + "salmon")
-
-
-## ============================================================================
-## Reads
-## ============================================================================
-
-def raw_reads(wildcards):
-    """[R1, R2] for a sample: its single FASTQ pair as given, or the lanes /
-    runs concatenated into one pair by merge_lanes when there are several."""
-    units = SAMPLE_TABLE[wildcards.sample]["units"]
-    if len(units) == 1:
-        return list(units[0])
-    return [
-        RESULTS + f"fastq/{wildcards.sample}_R1.merged.fastq.gz",
-        RESULTS + f"fastq/{wildcards.sample}_R2.merged.fastq.gz",
-    ]
-
-
-def analysis_reads(wildcards):
-    """What STAR and Salmon read: fastp's trimmed reads, or the raw reads with
-    trimming.enabled: false."""
-    if trimming_enabled():
-        return [
-            RESULTS + f"fastp/{wildcards.sample}_R1.trimmed.fastq.gz",
-            RESULTS + f"fastp/{wildcards.sample}_R2.trimmed.fastq.gz",
-        ]
-    return raw_reads(wildcards)
 
 
 def decompress_cmd(path):
