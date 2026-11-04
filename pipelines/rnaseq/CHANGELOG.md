@@ -4,6 +4,18 @@ All notable changes to sm-core/rnaseq are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the pipeline uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- The differential expression models, design checks and figures moved to the shared
+  `smcore/de.py` and `smcore/rules/de_design.smk`, where atacseq's differential
+  accessibility uses them too. Config, outputs and results are unchanged (the yeast and
+  seqc tutorials' DE tables are byte-identical). An analysis `name` with characters other
+  than letters, digits and `_ . + -` is now refused at start-up, as the schema already
+  required.
+- Volcano plots: only genes with a name compete for the labels, so a top gene without
+  a `gene_name` no longer leaves its label slot empty.
+
 ## [0.2.0] - 2026-10-27
 
 Differential expression and enrichment.

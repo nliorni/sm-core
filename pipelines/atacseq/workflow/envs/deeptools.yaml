@@ -1,0 +1,7 @@
+# sm-core/atacseq: deeptools
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - deeptools=4.0.0

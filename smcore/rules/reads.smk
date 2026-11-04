@@ -1,6 +1,51 @@
 ###############################################################################
-# Read preprocessing: lane merging and fastp
+# sm-core shared rules: reads -- lane merging and fastp
+#
+# Included by every short-read pipeline after its own workflow/rules/common.smk:
+#
+#     include: "../../smcore/rules/reads.smk"
+#
+# Needs from the pipeline: RESULTS, LOGS, BENCH, SAMPLE_TABLE (load_samples())
+# and a `trimming:` config section (enabled, min_length, extra, threads,
+# mem_mb) in its schema. Provides raw_reads() and analysis_reads(), the reads
+# a pipeline's first real step takes.
 ###############################################################################
+
+
+def trimming_enabled():
+    return config["trimming"]["enabled"]
+
+
+## ============================================================================
+## Reads
+## ============================================================================
+
+def raw_reads(wildcards):
+    """[R1, R2] for a sample: its single FASTQ pair as given, or the lanes /
+    runs concatenated into one pair by merge_lanes when there are several."""
+    units = SAMPLE_TABLE[wildcards.sample]["units"]
+    if len(units) == 1:
+        return list(units[0])
+    return [
+        RESULTS + f"fastq/{wildcards.sample}_R1.merged.fastq.gz",
+        RESULTS + f"fastq/{wildcards.sample}_R2.merged.fastq.gz",
+    ]
+
+
+def analysis_reads(wildcards):
+    """What the pipeline's aligner reads: fastp's trimmed reads, or the raw
+    reads with trimming.enabled: false."""
+    if trimming_enabled():
+        return [
+            RESULTS + f"fastp/{wildcards.sample}_R1.trimmed.fastq.gz",
+            RESULTS + f"fastp/{wildcards.sample}_R2.trimmed.fastq.gz",
+        ]
+    return raw_reads(wildcards)
+
+
+## ============================================================================
+## Lane merging and fastp
+## ============================================================================
 
 def _units(sample, mate):
     return [pair[mate] for pair in SAMPLE_TABLE[sample]["units"]]
@@ -44,8 +89,8 @@ def _fastp_outputs():
 
 rule fastp:
     # Always runs, for its before/after read QC (MultiQC reads the JSON). With
-    # trimming.enabled it also writes the trimmed reads that STAR and Salmon
-    # use; without it, no reads are written and they read the raw FASTQ.
+    # trimming.enabled it also writes the trimmed reads the aligner uses;
+    # without it, no reads are written and the aligner reads the raw FASTQ.
     #
     # Adapters are found by mate overlap (--detect_adapter_for_pe), which
     # needs no adapter sequence and works for TruSeq, Nextera and MGI alike.

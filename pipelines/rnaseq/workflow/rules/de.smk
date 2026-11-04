@@ -20,16 +20,10 @@
 # Results: results/de/<matrix>/<analysis>/<split>/<contrast>/
 ###############################################################################
 
-import re
-
 DE = config["de"]
 DE_DIR = RESULTS + "de/"
 DE_FORMATS = DE["plot_formats"]
-DE_ANALYSES = {a["name"]: a for a in DE["analyses"]}
 DE_ENV = env("de")
-
-if len(DE_ANALYSES) != len(DE["analyses"]):
-    config_error("de.analyses: every analysis needs a unique name.")
 
 MSIGDB_FILES = {
     # collection: (human file prefix, mouse file prefix)
@@ -56,80 +50,8 @@ def gene_set_files():
 GENE_SET_FILES = gene_set_files()
 
 
-def _design_factors(design):
-    # Column names in a formula: identifiers, minus formula keywords.
-    names = re.findall(r"[A-Za-z_][A-Za-z0-9_.]*", design.split("~", 1)[1])
-    return [n for n in dict.fromkeys(names) if n not in ("C", "Q")]
-
-
-def _meta(sample, column):
-    return SAMPLE_TABLE[sample]["meta"].get(column, "")
-
-
-def _check_name(value, what):
-    if not re.fullmatch(r"[A-Za-z0-9_.+-]+", str(value)):
-        config_error(f"{what} '{value}' may only contain letters, digits and _ . + - (it becomes a folder name).")
-
-
-def de_units():
-    """[(analysis, split, (factor, test, reference)), ...], checked against
-    the samplesheet so that mistakes stop the run before any job starts."""
-    columns = sorted({k for s in SAMPLES for k in SAMPLE_TABLE[s]["meta"]})
-    units = []
-    for name, a in DE_ANALYSES.items():
-        where = f"de.analyses '{name}'"
-        excluded = set(a.get("exclude") or [])
-        unknown = excluded - set(SAMPLES)
-        if unknown:
-            config_error(f"{where}: exclude lists unknown samples {sorted(unknown)}.")
-        samples = [s for s in SAMPLES if s not in excluded]
-        factors = _design_factors(a["design"])
-        split_by = a.get("split_by")
-        for col in factors + ([split_by] if split_by else []):
-            if col not in columns:
-                config_error(f"{where}: '{col}' is not a samplesheet column (have: {', '.join(columns) or 'none'}).")
-        if split_by in factors:
-            config_error(f"{where}: split_by '{split_by}' cannot also be in the design.")
-        groups = {}
-        for s in samples:
-            groups.setdefault(_meta(s, split_by) if split_by else "all", []).append(s)
-        seen = set()
-        for factor, test, reference in a["contrasts"]:
-            if factor not in factors:
-                config_error(f"{where}: contrast factor '{factor}' is not in the design {a['design']}.")
-            _check_name(test, f"{where}: level")
-            _check_name(reference, f"{where}: level")
-            if f"{test}_vs_{reference}" in seen:
-                config_error(f"{where}: contrast {test}_vs_{reference} appears twice.")
-            seen.add(f"{test}_vs_{reference}")
-        for split, members in groups.items():
-            _check_name(split, f"{where}: split value")
-            for factor, test, reference in a["contrasts"]:
-                levels = {_meta(s, factor) for s in members}
-                for level in (test, reference):
-                    if level not in levels:
-                        config_error(
-                            f"{where}: no sample with {factor} = '{level}'"
-                            + (f" where {split_by} = '{split}'" if split_by else "")
-                            + f" (levels: {', '.join(sorted(levels))})."
-                        )
-                units.append((name, split, (factor, test, reference)))
-            # Residual degrees of freedom of an additive design: samples minus
-            # coefficients. With none left, dispersions cannot be estimated.
-            # (Designs with interactions are left to PyDESeq2 to judge.)
-            if not re.search(r"[:*]", a["design"]):
-                coefficients = 1 + sum(len({_meta(s, f) for s in members}) - 1 for f in factors)
-                if len(members) - coefficients < 1:
-                    config_error(
-                        f"{where}: {len(members)} samples"
-                        + (f" in '{split}'" if split_by else "")
-                        + f" cannot fit {a['design']} ({coefficients} coefficients): no replicates left "
-                        "to estimate dispersions."
-                    )
-    return units
-
-
-DE_UNITS = de_units()
+# The analyses, checked against the samplesheet (smcore/rules/de_design.smk).
+DE_UNITS = de_units(DE["analyses"], "de")
 
 
 def de_split_dirs():
@@ -168,18 +90,7 @@ wildcard_constraints:
 
 
 def de_params(wildcards):
-    a = DE_ANALYSES[wildcards.analysis]
-    contrast = next(
-        c for (n, s, c) in DE_UNITS
-        if n == wildcards.analysis and s == wildcards.split and f"{c[1]}_vs_{c[2]}" == getattr(wildcards, "contrast", f"{c[1]}_vs_{c[2]}")
-    )
-    return {
-        "design": a["design"],
-        "split_by": a.get("split_by"),
-        "exclude": a.get("exclude") or [],
-        "contrast": list(contrast),
-        "contrasts": [list(c) for (n, s, c) in DE_UNITS if n == wildcards.analysis and s == wildcards.split],
-    }
+    return de_model_params(DE["analyses"], DE_UNITS, wildcards)
 
 
 localrules: de_gene_sets

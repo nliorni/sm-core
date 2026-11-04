@@ -1,0 +1,336 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+description: >-
+  sm-core/atacseq project configuration. Validated at parse time; every
+  `default` here is filled in when the key is absent, so config/config.yaml
+  only has to state what differs. The annotated template is
+  config/config.yaml.
+type: object
+
+properties:
+  output_dir:
+    type: string
+    description: Main output directory.
+
+  samplesheet:
+    type: string
+    description: nf-core-style CSV/TSV with sample,fastq_1,fastq_2[,...metadata].
+  samples:
+    type: object
+    description: SAMPLE_ID -> FASTQ prefix, or list of prefixes (lanes/runs merged).
+  unit:
+    type: array
+    items: {type: string}
+    minItems: 2
+    maxItems: 2
+  extension:
+    type: string
+
+  notify_email:
+    type: string
+  conda_envs:
+    type: object
+    additionalProperties: {type: string}
+
+  reference:
+    type: object
+    properties:
+      genome:
+        type: string
+        description: Genome FASTA, plain or gzipped.
+      gtf:
+        type: string
+        description: Gene annotation GTF matching the genome, plain or gzipped (TSSs and peak annotation).
+      blacklist:
+        type: [string, "null"]
+        default: null
+        description: >-
+          ENCODE blacklist BED (plain or gzipped) with the genome's sequence
+          names. Peaks overlapping it are dropped and it is left out of the
+          bigWigs. Strongly recommended; resources/get_atac_resources.sh fetches it.
+      dir:
+        type: [string, "null"]
+        default: null
+        description: Where the derived reference is built. Default <output_dir>/reference/.
+      bowtie2_index:
+        type: [string, "null"]
+        default: null
+        description: Prebuilt bowtie2 index prefix (from exactly the genome above), used instead of building one.
+      mito_name:
+        type: string
+        default: auto
+        description: Mitochondrial sequence name; auto picks chrM, MT, chrMT or M, whichever the genome has.
+      effective_genome_size:
+        type: [integer, "null"]
+        default: null
+        description: MACS3 -g. Default the genome's non-N length.
+      threads:
+        type: integer
+        minimum: 1
+        default: 16
+      bowtie2_index_mem_mb:
+        type: integer
+        default: 32000
+    required: [genome, gtf]
+
+  trimming:
+    type: object
+    default: {}
+    properties:
+      enabled:
+        type: boolean
+        default: true
+      min_length:
+        type: integer
+        minimum: 1
+        default: 20
+      extra:
+        type: string
+        default: ""
+      threads:
+        type: integer
+        minimum: 1
+        default: 8
+      mem_mb:
+        type: integer
+        default: 4000
+
+  align:
+    type: object
+    default: {}
+    properties:
+      threads:
+        type: integer
+        minimum: 1
+        default: 16
+      mem_mb:
+        type: integer
+        default: 16000
+      max_fragment:
+        type: integer
+        minimum: 100
+        default: 2000
+        description: bowtie2 -X, the longest fragment counted as a proper pair.
+      min_mapq:
+        type: integer
+        minimum: 0
+        default: 30
+      remove_duplicates:
+        type: boolean
+        default: true
+      extra:
+        type: string
+        default: ""
+      markdup_mem_mb:
+        type: integer
+        default: 16000
+
+  peaks:
+    type: object
+    default: {}
+    properties:
+      cutoff:
+        type: string
+        enum: [pvalue, qvalue]
+        default: pvalue
+        description: >-
+          MACS3 significance cut-off per sample: -p (ENCODE's choice, with the
+          replicate consensus as the reproducibility filter) or -q.
+      threshold:
+        type: number
+        exclusiveMinimum: 0
+        maximum: 1
+        default: 0.01
+      extra:
+        type: string
+        default: ""
+      mem_mb:
+        type: integer
+        default: 16000
+      consensus_group_by:
+        type: array
+        items: {type: string}
+        default: []
+        description: >-
+          Samplesheet columns defining replicate groups. A consensus peak must
+          be called in at least min_replicates samples of one group. Empty:
+          all samples are one group.
+      min_replicates:
+        type: integer
+        minimum: 1
+        default: 2
+        description: Capped at the size of each group.
+
+  bigwig:
+    type: object
+    default: {}
+    properties:
+      bin_size:
+        type: integer
+        minimum: 1
+        default: 10
+      group_by:
+        type: array
+        items: {type: string}
+        default: []
+        description: Samplesheet columns; one averaged bigWig per group. Empty for per-sample tracks only.
+      threads:
+        type: integer
+        minimum: 1
+        default: 8
+      mem_mb:
+        type: integer
+        default: 8000
+
+  annotation:
+    type: object
+    default: {}
+    properties:
+      gene_types:
+        type: array
+        items: {type: string}
+        default: [protein_coding, lncRNA]
+        description: Gene types peaks are annotated to (GENCODE gene_type / Ensembl gene_biotype).
+      promoter_upstream:
+        type: integer
+        minimum: 0
+        default: 1000
+      promoter_downstream:
+        type: integer
+        minimum: 0
+        default: 1000
+
+  qc:
+    type: object
+    default: {}
+    properties:
+      threads:
+        type: integer
+        minimum: 1
+        default: 2
+      mem_mb:
+        type: integer
+        default: 12000
+      somalier_sites:
+        type: [string, "null"]
+        default: null
+        description: Somalier sites VCF for the genome build; enables the sample identity check.
+      identity_bams:
+        type: array
+        items: {type: string}
+        default: []
+        description: >-
+          Extra BAMs from other assays of the same cells (e.g. the RNA-seq
+          STAR BAMs), on the same genome assembly, added to the identity check.
+      identity_prefix:
+        type: string
+        default: "ext_"
+        pattern: "^[A-Za-z0-9_.-]+$"
+        description: >-
+          Prefix for the extra BAMs' sample names (their read-group SM) in the
+          identity report. Samples equal up to this prefix are expected to be
+          the same cells, and flagged when they are not.
+      somalier_extra:
+        type: string
+        default: ""
+        description: Extra options for somalier relate, e.g. "--min-ab 0.2" with RNA-seq BAMs.
+      multiqc_extra:
+        type: string
+        default: ""
+
+  da:
+    type: object
+    default: {}
+    description: >-
+      Differential accessibility of the consensus peaks with PyDESeq2, for
+      every analysis x split x contrast below. Runs with -w da, and with -w all
+      when `analyses` is not empty. Same analyses format as rnaseq's `de`.
+    additionalProperties: false
+    properties:
+      normalization:
+        type: string
+        enum: [median_of_ratios, library_size]
+        default: median_of_ratios
+        description: >-
+          Size factors. median_of_ratios: DESeq2's, over the peaks (assumes
+          most peaks do not change). library_size: total fragments in each
+          final BAM (DiffBind's default; robust to a global opening or closing
+          of chromatin, sensitive to FRiP differences). Both are always
+          computed and compared; the MA plot shows where the other one puts 0.
+      alpha:
+        type: number
+        exclusiveMinimum: 0
+        maximum: 1
+        default: 0.05
+        description: Adjusted p-value cut-off, for independent filtering and the significant lists.
+      min_abs_log2fc:
+        type: number
+        minimum: 0
+        default: 1.0
+        description: Minimum |log2 fold change| for a peak to enter the significant lists.
+      min_count:
+        type: integer
+        minimum: 0
+        default: 10
+        description: >-
+          Pre-filter: keep a peak with at least this many fragments in at least
+          as many samples as the smallest group of the contrast's factor.
+      shrink:
+        type: boolean
+        default: true
+        description: Add shrunken log2 fold changes (PyDESeq2 lfc_shrink), used for the MA plot.
+      label_top:
+        type: integer
+        minimum: 0
+        default: 15
+        description: Peaks labelled (with their nearest gene) on the volcano plot.
+      heatmap_top:
+        type: integer
+        minimum: 2
+        default: 50
+      plot_formats:
+        type: array
+        items: {type: string, enum: [png, pdf, svg]}
+        minItems: 1
+        default: [png, pdf]
+      threads:
+        type: integer
+        minimum: 1
+        default: 4
+      mem_mb:
+        type: integer
+        default: 16000
+      analyses:
+        type: array
+        default: []
+        items:
+          type: object
+          required: [name, design, contrasts]
+          additionalProperties: false
+          properties:
+            name:
+              type: string
+              pattern: "^[A-Za-z0-9_.-]+$"
+            design:
+              type: string
+              pattern: "^\\s*~"
+              description: PyDESeq2 design formula over samplesheet columns, e.g. "~ condition".
+            split_by:
+              type: [string, "null"]
+              description: >-
+                Samplesheet column: fit a separate model for each of its values
+                (e.g. one per cell line). Omit to model all samples together.
+            exclude:
+              type: array
+              items: {type: string}
+              description: Sample names left out of this analysis.
+            contrasts:
+              type: array
+              minItems: 1
+              items:
+                type: array
+                minItems: 3
+                maxItems: 3
+                items: {type: string}
+                description: "[factor, test level, reference level]: log2 fold change = test / reference."
+
+required: [output_dir, reference]

@@ -1,0 +1,8 @@
+# sm-core/atacseq: bowtie2
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - bowtie2=2.5.5
+  - samtools=1.23.1

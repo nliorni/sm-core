@@ -13,7 +13,9 @@ sm-core/
 ├── environment.yml          the one launcher environment, for every pipeline
 ├── smcore/                  shared code, versioned with the suite
 │   ├── launcher.py          the CLI every pipeline's run.py hands over to
-│   └── common.smk           Snakemake helpers every Snakefile includes first
+│   ├── common.smk           Snakemake helpers every Snakefile includes first
+│   ├── rules/               rules shared by several pipelines (see below)
+│   └── plotting/            the one figure style
 ├── templates/pipeline/      the skeleton bootstrap.py copies (runnable toy demo)
 ├── pipelines/
 │   └── <name>/              one directory per pipeline -- self-contained:
@@ -54,13 +56,30 @@ group, one repository gives the same separation without cross-repository release
 pipeline later needs its own release cycle, its directory moves out unchanged except for
 the two `include`/`sys.path` lines that point at `smcore/`.
 
-### Shared rules: not yet
+### Shared rules
 
-nf-core also shares *rules* (`nf-core/modules`). sm-core deliberately does not, yet: a rule
-is shared when a second pipeline needs it, not before, because a shared rule must be
-parameterised for every caller and is harder to read than a local one. When that happens,
-it goes in `smcore/modules/<tool>.smk` and is used with Snakemake's `module`/`use rule …
-with:` mechanism.
+nf-core also shares *rules* (`nf-core/modules`). sm-core shares a rule only once a second
+pipeline needs it, not before, because a shared rule must be parameterised for every caller
+and is harder to read than a local one. Shared rules live in `smcore/rules/<stage>.smk`
+and a pipeline `include:`s them after its own `workflow/rules/common.smk`. The file's
+header lists what it needs from the pipeline: names such as `RESULTS`, `LOGS`, `BENCH` and
+`SAMPLE_TABLE`, and the config section its rules read, which the pipeline's schema must
+declare.
+
+- `smcore/rules/reads.smk`: lane merging and fastp, with `raw_reads()` and
+  `analysis_reads()` (rnaseq, atacseq).
+- `smcore/rules/de_design.smk`: `de_units()` checks a config section's differential
+  `analyses` against the samplesheet and lists the models and contrasts to run (rnaseq
+  `de`, atacseq `da`).
+
+Shared Python, for scripts running in a rule's conda environment, lives in the `smcore`
+package and is imported after putting `SMCORE_ROOT` (a rule param) on `sys.path`:
+
+- `smcore/plotting`: the suite's figure style.
+- `smcore/de.py`: PyDESeq2 model fitting (optionally with fixed size factors), VST, and the
+  volcano, MA, heatmap, PCA, sample-distance and summary figures (rnaseq `de`, atacseq
+  `da`). What a feature is (gene, peak), how it is labelled and what is joined to the
+  results stays in each pipeline's scripts.
 
 ## Rules of the house
 

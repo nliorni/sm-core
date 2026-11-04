@@ -1,0 +1,12 @@
+# sm-core/atacseq: differential accessibility (PyDESeq2). The same pins as
+# rnaseq's de environment, without gseapy.
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - python=3.12
+  - pydeseq2=0.5.4
+  - pandas=2.3
+  - matplotlib-base=3.11.1
+  - adjusttext=1.4.0

@@ -1,0 +1,34 @@
+# ============================================================================
+# sm-core/atacseq validation tutorial: GM12878 vs K562 (ENCODE ENCSR095QNB,
+# ENCSR483RKN), two replicates each, full depth, GRCh38. Data and truth set:
+# tests/tutorial/encode/download_tutorial_data.sh; checks: validate.py.
+#
+#   ./run.py -w all -c tests/tutorial/encode/config_tutorial.yaml -q 32
+# ============================================================================
+
+output_dir: "tests/tutorial/encode/output/"
+samplesheet: "tests/tutorial/encode/samplesheet.csv"
+
+reference:
+  genome: "tests/tutorial/encode/reference/genome.fa.gz"
+  gtf: "tests/tutorial/encode/reference/genes.gtf.gz"
+  blacklist: "tests/tutorial/encode/reference/hg38-blacklist.v2.bed.gz"
+
+peaks:
+  # a region is kept when both replicates of one cell line called it
+  consensus_group_by: [cell_line]
+  min_replicates: 2
+
+bigwig:
+  group_by: [cell_line]
+
+qc:
+  somalier_sites: "tests/tutorial/encode/reference/sites.hg38.vcf.gz"
+
+da:
+  # K562 vs GM12878: log2 fold change > 0 = more open in K562
+  analyses:
+    - name: cell_lines
+      design: "~ cell_line"
+      contrasts:
+        - [cell_line, K562, GM12878]

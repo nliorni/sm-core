@@ -1,0 +1,7 @@
+# sm-core/atacseq: subread
+channels:
+  - conda-forge
+  - bioconda
+  - nodefaults
+dependencies:
+  - subread=2.1.1
