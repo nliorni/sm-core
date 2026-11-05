@@ -2,6 +2,12 @@
 
 > ### 📣 News!
 >
+> - **4 November 2026**: the second sm-core pipeline,
+>   **[atacseq](pipelines/atacseq/README.md)**: paired-end bulk ATAC-seq from FASTQ to
+>   ENCODE-standard QC, reproducible consensus peaks and differential accessibility with
+>   PyDESeq2, plus a genetic identity check that can include the project's RNA-seq BAMs.
+>   Validated against ENCODE's own processing of GM12878 and K562. rnaseq and atacseq now
+>   share their differential analysis code.
 > - **27 October 2026**: **rnaseq 0.2.0** adds differential expression in Python: PyDESeq2
 >   for the contrasts in your config, with ORA and GSEA (MSigDB), validated against TaqMan
 >   qPCR. All sm-core figures now share one publication style.
